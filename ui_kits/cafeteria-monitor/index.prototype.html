@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Cafeteria Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; overflow: hidden;
+  font-family: 'Inter', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  background: #e8eaed;
+}
+#root { height: 100%; display: flex; align-items: flex-start; justify-content: center; padding-top: 16px; }
+
+/* iPad shell — JS-scaled to fit viewport */
+.ipad-shell {
+  width: 768px;
+  height: 1024px;
+  background: #1a1a1a;
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.45), inset 0 0 0 1px #333;
+  display: flex;
+  flex-direction: column;
+  transform-origin: top center;
+  flex-shrink: 0;
+}
+.ipad-screen {
+  flex: 1;
+  background: #f5f6f8;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes pulseGlow  { 0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,.4)}  50%{box-shadow:0 0 0 12px rgba(22,163,74,0)} }
+@keyframes pulseRed   { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.4)}  50%{box-shadow:0 0 0 12px rgba(220,38,38,0)} }
+@keyframes pulseAmber { 0%,100%{box-shadow:0 0 0 0 rgba(217,119,6,.4)}  50%{box-shadow:0 0 0 12px rgba(217,119,6,0)} }
+@keyframes heroIn  { from{opacity:0;transform:scale(.94)} to{opacity:1;transform:scale(1)} }
+@keyframes entryIn { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
+@keyframes dotPulse{ 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.7)} }
+
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: #ebebeb;
+}
+.history-list::-webkit-scrollbar { display: none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+const DEVICES = [
+  {id:'123456',name:'Western'},
+  {id:'123457',name:'Korean'},
+  {id:'123458',name:'Chinese'},
+  {id:'123459',name:'Japanese'},
+];
+const SLOTS = [
+  {name:'breakfast',label:'Breakfast',range:'07:30–09:00',color:'#0369a1'},
+  {name:'lunch',    label:'Lunch',    range:'11:30–13:00',color:'#7c3aed'},
+  {name:'dinner',   label:'Dinner',   range:'17:30–19:00',color:'#b45309'},
+];
+
+function ts(h,m,s=0){ const d=new Date(); d.setHours(h,m,s,0); return d.toISOString(); }
+const SEED = [
+  {id:1,ok:true, dup:false,name:'Kim Ji-woo',   uid:'USR-042',device:'Korean',  deviceId:'123457',slot:'lunch',    slotLabel:'Lunch',    time:ts(12,14,3)},
+  {id:2,ok:true, dup:false,name:'Park Sung-min',uid:'USR-091',device:'Western', deviceId:'123456',slot:'lunch',    slotLabel:'Lunch',    time:ts(12,13,41)},
+  {id:3,ok:false,dup:true, name:'Kim Ji-woo',   uid:'USR-042',device:'Chinese', deviceId:'123458',slot:'lunch',    slotLabel:'Lunch',    time:ts(12,13,2)},
+  {id:4,ok:true, dup:false,name:'Lee Min-jung', uid:'USR-017',device:'Japanese',deviceId:'123459',slot:'lunch',    slotLabel:'Lunch',    time:ts(12,9,3)},
+  {id:5,ok:true, dup:false,name:'Choi Hyun-soo',uid:'USR-203',device:'Western', deviceId:'123456',slot:'lunch',    slotLabel:'Lunch',    time:ts(12,7,55)},
+  {id:6,ok:false,dup:true, name:'Park Sung-min',uid:'USR-091',device:'Western', deviceId:'123456',slot:'lunch',    slotLabel:'Lunch',    time:ts(12,4,22)},
+  {id:7,ok:true, dup:false,name:'Yoon Jae-hyun',uid:'USR-312',device:'Chinese', deviceId:'123458',slot:'breakfast',slotLabel:'Breakfast',time:ts(8,6,22)},
+  {id:8,ok:true, dup:false,name:'Han So-yeon',  uid:'USR-044',device:'Western', deviceId:'123456',slot:'breakfast',slotLabel:'Breakfast',time:ts(8,3,44)},
+];
+const NAMES=[['USR-401','Kang Min-ho'],['USR-502','Oh Ye-jin'],['USR-603','Lim Hyun-woo'],
+  ['USR-704','Song Ji-eun'],['USR-805','Kwon Tae-yang'],['USR-906','Moon Soo-ah']];
+
+function fmtTime(iso){
+  return new Date(iso).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+}
+
+// ── Hero card — most recent scan ───────────────────────
+function HeroCard({ entry }) {
+  if (!entry) return (
+    <div style={{flex:'0 0 260px',display:'flex',flexDirection:'column',alignItems:'center',
+      justifyContent:'center',background:'#fff',gap:10}}>
+      <div style={{fontSize:48,opacity:.12}}>⬡</div>
+      <div style={{fontFamily:"'DM Mono',monospace",fontSize:14,color:'#c0c0c0'}}>Waiting for scan...</div>
+    </div>
+  );
+
+  const {ok,dup,name,uid,device,slotLabel,slot,time} = entry;
+  const slotColor = SLOTS.find(s=>s.name===slot)?.color || '#6b7280';
+
+  const cfg = ok
+    ? {bg:'#f0fdf4', border:'#86efac', iconBg:'#16a34a', iconColor:'#fff', icon:'✓',
+       label:'ALLOWED', labelColor:'#15803d', subtext:'Serve meal', pulse:'pulseGlow'}
+    : {bg:'#fffbeb', border:'#fcd34d', iconBg:'#d97706', iconColor:'#fff', icon:'⟳',
+       label:'DUPLICATE', labelColor:'#92400e', subtext:'Already scanned — do not serve', pulse:'pulseAmber'};
+
+  return (
+    <div key={entry.id} style={{
+      flex:'0 0 auto',
+      background:cfg.bg,
+      borderBottom:`1px solid ${cfg.border}`,
+      padding:'16px 24px',
+      display:'flex', alignItems:'center', gap:18,
+      animation:'heroIn .3s ease',
+    }}>
+      {/* Icon */}
+      <div style={{
+        width:56,height:56,borderRadius:'50%',flexShrink:0,
+        background:cfg.iconBg, color:cfg.iconColor,
+        display:'flex',alignItems:'center',justifyContent:'center',
+        fontSize:26,fontWeight:900,
+        animation:`${cfg.pulse} 2s ease infinite`,
+      }}>{cfg.icon}</div>
+
+      {/* Info */}
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',
+          color:cfg.labelColor,marginBottom:2}}>{cfg.label}</div>
+        <div style={{fontSize:20,fontWeight:800,color:'#111827',letterSpacing:'-0.3px',
+          whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{name}</div>
+        <div style={{display:'flex',gap:8,marginTop:5,alignItems:'center',flexWrap:'wrap'}}>
+          <span style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:'#9ca3af'}}>{uid}</span>
+          <span style={{fontSize:12,fontWeight:600,color:slotColor,
+            background:slotColor+'18',padding:'2px 8px',borderRadius:4}}>{slotLabel}</span>
+          <span style={{fontSize:12,fontWeight:500,color:'#6b7280',
+            background:'#f3f4f6',padding:'2px 8px',borderRadius:4,border:'1px solid #e5e7eb'}}>{device}</span>
+          <span style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:'#9ca3af'}}>{fmtTime(time)}</span>
+        </div>
+      </div>
+
+      {/* Subtext */}
+      <div style={{textAlign:'right',flexShrink:0}}>
+        <div style={{fontSize:12,fontWeight:600,color:cfg.labelColor,maxWidth:130,textAlign:'right',lineHeight:1.4}}>
+          {cfg.subtext}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── History row ────────────────────────────────────────
+function HistoryRow({ entry, isNew }) {
+  const {ok,dup,name,uid,device,slotLabel,slot,time} = entry;
+  const slotColor = SLOTS.find(s=>s.name===slot)?.color || '#6b7280';
+  const dotColor  = ok ? '#16a34a' : '#d97706';
+
+  return (
+    <div style={{
+      display:'flex',alignItems:'center',gap:12,
+      padding:'12px 20px',
+      background:'#fff',
+      animation: isNew ? 'entryIn .2s ease' : 'none',
+      flexShrink:0,
+    }}>
+      <div style={{width:8,height:8,borderRadius:'50%',flexShrink:0,background:dotColor}}/>
+
+      <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:10}}>
+        <span style={{fontSize:15,fontWeight:700,color:'#111827',whiteSpace:'nowrap',
+          overflow:'hidden',textOverflow:'ellipsis',maxWidth:180}}>{name}</span>
+        <span style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:'#c0c0c0',flexShrink:0}}>{uid}</span>
+      </div>
+
+      {dup && (
+        <span style={{fontSize:10,fontWeight:800,padding:'2px 7px',borderRadius:4,flexShrink:0,
+          background:'#fef3c7',color:'#92400e',letterSpacing:'0.5px',textTransform:'uppercase'}}>DUP</span>
+      )}
+
+      <span style={{fontSize:12,fontWeight:600,color:slotColor,flexShrink:0}}>{slotLabel}</span>
+      <span style={{fontSize:12,fontWeight:500,color:'#9ca3af',flexShrink:0,minWidth:52}}>{device}</span>
+      <span style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:'#c8c8d0',flexShrink:0,
+        minWidth:68,textAlign:'right'}}>{fmtTime(time)}</span>
+    </div>
+  );
+}
+
+// ── Status bar ─────────────────────────────────────────
+function StatusBar({ logs, clock, date, isLive, station, onStation }) {
+  const allowed = logs.filter(l=>l.ok).length;
+  const dups    = logs.filter(l=>l.dup).length;
+  const slotLogs = logs.filter(l=>l.slot==='lunch');
+
+  return (
+    <div style={{background:'#fff',borderBottom:'1px solid #e5e7eb',flexShrink:0,padding:'10px 20px'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        {/* Left */}
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          <div style={{display:'flex',alignItems:'center',gap:5}}>
+            <div style={{width:7,height:7,borderRadius:'50%',
+              background:isLive?'#22c55e':'#ef4444',
+              animation:isLive?'dotPulse 2s infinite':'none'}}/>
+            <span style={{fontSize:12,fontWeight:600,color:isLive?'#16a34a':'#dc2626'}}>
+              {isLive?'Live':'Offline'}
+            </span>
+          </div>
+          <span style={{color:'#e0e0e0'}}>|</span>
+          {/* Station badge */}
+          <select value={station} onChange={e=>onStation(e.target.value)}
+            style={{fontSize:13,fontWeight:700,color:'#111827',background:'#f5f6f8',
+              border:'1px solid #e5e7eb',borderRadius:7,padding:'4px 10px',cursor:'pointer',
+              appearance:'none',WebkitAppearance:'none',paddingRight:24,
+              backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239ca3af'/%3E%3C/svg%3E")`,
+              backgroundRepeat:'no-repeat',backgroundPosition:'right 8px center'}}>
+            <option value="all">All Stations</option>
+            {DEVICES.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        </div>
+
+        {/* Centre: stats */}
+        <div style={{display:'flex',gap:20,alignItems:'center'}}>
+          <Stat label="Allowed"   value={allowed} color="#16a34a"/>
+          <Stat label="Duplicate" value={dups}    color="#d97706" warn={dups>0}/>
+          <Stat label="Total"     value={logs.length} color="#6b7280"/>
+        </div>
+
+        {/* Right: clock */}
+        <div style={{textAlign:'right'}}>
+          <div style={{fontFamily:"'DM Mono',monospace",fontSize:18,fontWeight:500,
+            color:'#111827',letterSpacing:'0.5px'}}>{clock}</div>
+          <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:'#9ca3af',marginTop:1}}>{date}</div>
+        </div>
+      </div>
+
+      {/* Slot mini-row */}
+      <div style={{display:'flex',gap:8,marginTop:8}}>
+        {SLOTS.map(s=>{
+          const sl = logs.filter(l=>l.slot===s.name);
+          const a  = sl.filter(l=>l.ok).length;
+          const d  = sl.filter(l=>l.dup).length;
+          return (
+            <div key={s.name} style={{flex:1,display:'flex',alignItems:'center',gap:6,
+              padding:'5px 10px',background:'#f9fafb',borderRadius:7,border:'1px solid #f0f0f0',
+              borderLeft:`3px solid ${s.color}`}}>
+              <span style={{fontSize:11,fontWeight:700,color:s.color,letterSpacing:'0.3px'}}>{s.label}</span>
+              <span style={{fontFamily:"'DM Mono',monospace",fontSize:13,fontWeight:500,color:'#16a34a',marginLeft:'auto'}}>{a}</span>
+              {d>0 && <span style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:'#d97706'}}>+{d}✗</span>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Stat({label,value,color,warn}) {
+  return (
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center'}}>
+      <span style={{fontFamily:"'DM Mono',monospace",fontSize:20,fontWeight:500,color}}>
+        {value}{warn&&value>0?' ⚠':''}
+      </span>
+      <span style={{fontSize:9,fontWeight:700,letterSpacing:'0.7px',textTransform:'uppercase',color:'#9ca3af',marginTop:1}}>{label}</span>
+    </div>
+  );
+}
+
+// ── App ────────────────────────────────────────────────
+function App() {
+  const [logs, setLogs]     = useState(SEED);
+  const [newId, setNewId]   = useState(null);
+  const [station, setStation] = useState('all');
+  const [isLive, setIsLive] = useState(true);
+  const [clock, setClock]   = useState({t:'--:--',d:'---'});
+  const nextId = useRef(SEED.length+1);
+  const timerRef = useRef(null);
+
+  useEffect(()=>{
+    const tick=()=>{
+      const n=new Date();
+      setClock({
+        t:n.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}),
+        d:n.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}).toUpperCase(),
+      });
+    };
+    tick(); const t=setInterval(tick,1000); return()=>clearInterval(t);
+  },[]);
+
+  const inject = useCallback(()=>{
+    const [uid,name]=NAMES[Math.floor(Math.random()*NAMES.length)];
+    const dev=DEVICES[Math.floor(Math.random()*DEVICES.length)];
+    const sl=SLOTS[Math.floor(Math.random()*SLOTS.length)];
+    const ok=Math.random()>0.25;
+    const e={id:nextId.current++,ok,dup:!ok,name,uid,
+      device:dev.name,deviceId:dev.id,slot:sl.name,slotLabel:sl.label,time:new Date().toISOString()};
+    setLogs(p=>[...p,e]);
+    setNewId(e.id);
+    setTimeout(()=>setNewId(null),900);
+  },[]);
+
+  useEffect(()=>{
+    if(!isLive){clearInterval(timerRef.current);return;}
+    timerRef.current=setInterval(inject,3000);
+    return()=>clearInterval(timerRef.current);
+  },[isLive,inject]);
+
+  const visible = logs
+    .filter(l=>station==='all'||l.deviceId===station)
+    .slice().reverse();
+
+  const latest  = visible[0] || null;
+  const history = visible.slice(1);
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+
+      {!isLive && (
+        <div style={{padding:'6px',fontSize:12,fontWeight:600,textAlign:'center',
+          background:'#fff5f5',color:'#dc2626',flexShrink:0}}>
+          ⚠ Biostar2 connection lost — reconnecting...
+        </div>
+      )}
+
+      <StatusBar logs={visible} clock={clock.t} date={clock.d}
+        isLive={isLive} station={station} onStation={setStation}/>
+
+      {/* Hero — latest scan */}
+      <HeroCard entry={latest}/>
+
+      {/* History */}
+      <div style={{padding:'6px 20px 4px',flexShrink:0,
+        display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <span style={{fontSize:10,fontWeight:700,letterSpacing:'0.8px',
+          textTransform:'uppercase',color:'#c0c0c0'}}>Previous Scans</span>
+        <span style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:'#d0d0d0'}}>{history.length} entries</span>
+      </div>
+
+      <div className="history-list">
+        {history.map((l,i)=>(
+          <HistoryRow key={l.id} entry={l} isNew={l.id===newId}/>
+        ))}
+        {history.length===0 && (
+          <div style={{padding:'20px',textAlign:'center',
+            fontFamily:"'DM Mono',monospace",fontSize:12,color:'#d0d0d0'}}>
+            No previous scans
+          </div>
+        )}
+      </div>
+
+      {/* Demo controls */}
+      <div style={{display:'flex',gap:6,padding:'8px 14px',
+        borderTop:'1px solid #ebebeb',background:'#fff',flexShrink:0}}>
+        <button onClick={inject}
+          style={{flex:2,padding:'9px 0',borderRadius:7,border:'1px solid #bbf7d0',
+            background:'#f0fdf4',color:'#16a34a',fontSize:12,fontWeight:600,cursor:'pointer'}}>
+          + Inject Scan
+        </button>
+        <button onClick={()=>setIsLive(v=>!v)}
+          style={{flex:2,padding:'9px 0',borderRadius:7,
+            border:`1px solid ${isLive?'#fecaca':'#bbf7d0'}`,
+            background:isLive?'#fff5f5':'#f0fdf4',
+            color:isLive?'#dc2626':'#16a34a',
+            fontSize:12,fontWeight:600,cursor:'pointer'}}>
+          {isLive?'Simulate Offline':'Go Live'}
+        </button>
+        <button onClick={()=>{setLogs([]);nextId.current=1;}}
+          style={{flex:1,padding:'9px 0',borderRadius:7,border:'1px solid #e5e7eb',
+            background:'#f9fafb',color:'#9ca3af',fontSize:12,fontWeight:600,cursor:'pointer'}}>
+          Clear
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Shell() {
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    function scale() {
+      const el = ref.current;
+      if (!el) return;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const scaleX = vw / (768 + 32);
+      const scaleY = (vh - 32) / (1024 + 32);
+      const s = Math.min(scaleX, scaleY, 1);
+      el.style.transform = `scale(${s})`;
+    }
+    scale();
+    window.addEventListener('resize', scale);
+    return () => window.removeEventListener('resize', scale);
+  }, []);
+
+  return (
+    <div ref={ref} className="ipad-shell">
+      <div className="ipad-screen">
+        <App/>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Shell/>);
+</script>
+</body>
+</html>

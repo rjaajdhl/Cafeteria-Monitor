@@ -1,0 +1,75 @@
+<html>
+	<head>    
+    <title>BioStar 2</title>   
+</head>
+<body>
+	<div>
+		ID : <input type="text" id="loginID" /> <br/>
+		PW : <input type="password" id="loginPW" /> <br/>
+		<button id="loginBtn">Login</button>
+		
+		
+	</div>
+	<script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+	<script>
+		$(document).ready(function(){
+			var API_HOST = 'https://192.168.0.20:443', //BioStar 2 IP and HTTPS port
+				WS_HOST = 'wss://192.168.0.20:443', // same here as in the above line
+				BIOSTAR2_LOGIN_API_URI = API_HOST + '/api/login',
+				BIOSTAR2_WS_URI = WS_HOST + '/wsapi',
+				BIOSTAR2_WS_EVENT_START_URI = API_HOST + '/api/events/start';
+			
+			$('#loginBtn').click(function(){
+				var loginData = {
+					'User':{
+						'login_id': $('#loginID').val(),
+						'password': $('#loginPW').val()
+					}				
+				};				
+						
+			$.ajax({
+					url: BIOSTAR2_LOGIN_API_URI, // Biostar2 login api
+					type: 'POST',
+					dataType: 'json',
+					data: JSON.stringify(loginData),
+					contentType: 'application/json',
+					success: function(data, textStatus, request){						
+						var bsSessionId = request.getResponseHeader('bs-session-id'), // Biostar2 session id							
+							ws = new WebSocket(BIOSTAR2_WS_URI);
+							
+						ws.onopen = function(){  
+							// If BioStar 2 session id is sent to 'bs-session-id' after WebSocket opens, you can get the event through onmessage.
+							ws.send('bs-session-id' + "=" + request.getResponseHeader('bs-session-id'));
+							setTimeout(function(){postBioStar2()}, 1000)
+	
+							function postBioStar2(){$.ajax({
+								url: BIOSTAR2_WS_EVENT_START_URI,
+								type: 'POST',
+								dataType: 'json',								
+								contentType: 'application/json',
+								beforeSend: function(request) {
+									request.setRequestHeader("bs-session-id", bsSessionId);
+								},
+								success: function(data, textStatus, request){						
+									console.log(data, textStatus, request);
+								},
+								error: function(err){
+									console.log(err);
+								},
+							});     
+						     }  
+						};  
+						
+						ws.onmessage = function (event) {
+							console.log(event);
+						};
+					},
+					error: function(err){
+						console.log(err);
+					},
+				});       
+			});
+		});
+	</script>
+</body>
+</html>

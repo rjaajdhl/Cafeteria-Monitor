@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cafeteria Monitor — 3 Directions</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; background: #1a1a2e; font-family: 'Inter', sans-serif; }
+#root { height: 100%; display: flex; flex-direction: column; }
+
+/* Selector bar */
+.selector { display: flex; align-items: center; gap: 0; background: #0f0f1a; border-bottom: 1px solid #2a2a3a; flex-shrink: 0; padding: 0 16px; }
+.sel-btn { padding: 12px 20px; font-size: 13px; font-weight: 600; color: #6b6b88; cursor: pointer; border-bottom: 2px solid transparent; background: none; border-top: none; border-left: none; border-right: none; transition: all .15s; letter-spacing: 0.2px; }
+.sel-btn:hover { color: #e8e8f0; }
+.sel-btn.active { color: #fff; border-bottom-color: #fff; }
+.sel-label { font-size: 11px; color: #3a3a52; margin-left: 6px; font-style: italic; }
+.preview-area { flex: 1; overflow: hidden; display: flex; }
+iframe { flex: 1; border: none; }
+
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+@keyframes slideIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+@keyframes bigSlide { from{opacity:0;transform:scale(.96)} to{opacity:1;transform:scale(1)} }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState } = React;
+
+const VARIANTS = [
+  { id: 'a', label: 'A — Clean Enterprise', desc: 'Minimal · Whitespace · Notion feel' },
+  { id: 'b', label: 'B — Bold Kiosk',       desc: 'Large result · Traffic light · iPad operator' },
+  { id: 'c', label: 'C — Dense Table',      desc: 'Compact · Data-first · Spreadsheet feel' },
+];
+
+function App() {
+  const [active, setActive] = useState('a');
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+      <div className="selector">
+        {VARIANTS.map(v => (
+          <button key={v.id} className={`sel-btn ${active===v.id?'active':''}`} onClick={()=>setActive(v.id)}>
+            {v.label}
+            <span className="sel-label">{v.desc}</span>
+          </button>
+        ))}
+      </div>
+      <div className="preview-area">
+        {active==='a' && <VariantA/>}
+        {active==='b' && <VariantB/>}
+        {active==='c' && <VariantC/>}
+      </div>
+    </div>
+  );
+}
+
+// ── Shared data ────────────────────────────────────────────────────────
+const DEVICES = ['Western','Korean','Chinese','Japanese'];
+const SLOTS = [
+  {name:'breakfast',label:'Breakfast',range:'07:30–09:00',color:'#0369a1'},
+  {name:'lunch',    label:'Lunch',    range:'11:30–13:00',color:'#7c3aed'},
+  {name:'dinner',   label:'Dinner',   range:'17:30–19:00',color:'#b45309'},
+];
+const LOGS = [
+  {id:1,ok:true, dup:false,name:'Kim Ji-woo',    uid:'042',device:'Korean',  slot:'Lunch',    slotColor:'#7c3aed',time:'12:14:03'},
+  {id:2,ok:true, dup:false,name:'Park Sung-min', uid:'091',device:'Western', slot:'Lunch',    slotColor:'#7c3aed',time:'12:13:41'},
+  {id:3,ok:false,dup:true, name:'Kim Ji-woo',    uid:'042',device:'Chinese', slot:'Lunch',    slotColor:'#7c3aed',time:'12:13:02'},
+  {id:4,ok:true, dup:false,name:'Lee Min-jung',  uid:'017',device:'Japanese',slot:'Lunch',    slotColor:'#7c3aed',time:'12:09:03'},
+  {id:5,ok:true, dup:false,name:'Choi Hyun-soo', uid:'203',device:'Western', slot:'Lunch',    slotColor:'#7c3aed',time:'12:07:55'},
+  {id:6,ok:false,dup:true, name:'Park Sung-min', uid:'091',device:'Western', slot:'Lunch',    slotColor:'#7c3aed',time:'12:04:22'},
+  {id:7,ok:true, dup:false,name:'Yoon Jae-hyun', uid:'312',device:'Chinese', slot:'Breakfast',slotColor:'#0369a1',time:'08:06:22'},
+  {id:8,ok:true, dup:false,name:'Han So-yeon',   uid:'044',device:'Western', slot:'Breakfast',slotColor:'#0369a1',time:'08:03:44'},
+];
+
+// ════════════════════════════════════════════════════════
+// VARIANT A — Clean Enterprise (Notion/Linear)
+// ════════════════════════════════════════════════════════
+function VariantA() {
+  const [slot, setSlot] = useState('all');
+
+  const filtered = slot==='all' ? LOGS : LOGS.filter(l=>l.slot.toLowerCase()===slot);
+  const allowed = filtered.filter(l=>l.ok).length;
+  const dups    = filtered.filter(l=>l.dup).length;
+
+  return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',background:'#fafafa',overflow:'hidden',fontFamily:"'Inter',sans-serif"}}>
+
+      {/* Top bar — very clean, minimal */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 24px',background:'#fff',borderBottom:'1px solid #f0f0f0'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          <div style={{width:8,height:8,borderRadius:'50%',background:'#22c55e',boxShadow:'0 0 0 3px #dcfce7'}}></div>
+          <span style={{fontWeight:700,fontSize:16,color:'#111',letterSpacing:'-0.3px'}}>Cafeteria Monitor</span>
+          <span style={{fontSize:12,color:'#a0a0a0',fontWeight:500}}>Korean Station</span>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:20}}>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontFamily:"'DM Mono',monospace",fontSize:18,fontWeight:500,color:'#111',letterSpacing:'0.5px'}}>12:14</div>
+            <div style={{fontSize:11,color:'#a0a0a0',marginTop:1}}>Fri May 2</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Slot filter — pill row */}
+      <div style={{display:'flex',gap:6,padding:'12px 24px',background:'#fff',borderBottom:'1px solid #f0f0f0',alignItems:'center'}}>
+        {[{k:'all',l:'All meals'},{k:'breakfast',l:'Breakfast'},{k:'lunch',l:'Lunch'},{k:'dinner',l:'Dinner'}].map(s=>(
+          <button key={s.k} onClick={()=>setSlot(s.k)} style={{
+            padding:'5px 14px',borderRadius:100,fontSize:12,fontWeight:600,cursor:'pointer',
+            background:slot===s.k?'#111':'#fff',
+            color:slot===s.k?'#fff':'#6b7280',
+            border:`1px solid ${slot===s.k?'#111':'#e5e7eb'}`,
+            transition:'all .15s',
+          }}>{s.l}</button>
+        ))}
+        <div style={{marginLeft:'auto',display:'flex',gap:24}}>
+          <div style={{textAlign:'center'}}>
+            <div style={{fontFamily:"'DM Mono',monospace",fontSize:20,fontWeight:500,color:'#22c55e'}}>{allowed}</div>
+            <div style={{fontSize:10,fontWeight:600,color:'#9ca3af',letterSpacing:'0.6px',textTransform:'uppercase',marginTop:1}}>allowed</div>
+          </div>
+          <div style={{textAlign:'center'}}>
+            <div style={{fontFamily:"'DM Mono',monospace",fontSize:20,fontWeight:500,color:'#f59e0b'}}>{dups}</div>
+            <div style={{fontSize:10,fontWeight:600,color:'#9ca3af',letterSpacing:'0.6px',textTransform:'uppercase',marginTop:1}}>duplicate</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Log list */}
+      <div style={{flex:1,overflowY:'auto',padding:'12px 24px',display:'flex',flexDirection:'column',gap:3}}>
+        {filtered.map((l,i)=>{
+          const isDup = l.dup;
+          return (
+            <div key={l.id} style={{
+              display:'flex',alignItems:'center',gap:12,
+              padding:'10px 14px',borderRadius:8,
+              background: i===0 ? (l.ok?'#f0fdf4':'#fffbeb') : '#fff',
+              border:`1px solid ${i===0?(l.ok?'#bbf7d0':'#fde68a'):'#f3f4f6'}`,
+              animation: i===0?'slideIn .2s ease':'none',
+            }}>
+              <div style={{
+                width:7,height:7,borderRadius:'50%',flexShrink:0,
+                background: l.ok?'#22c55e':(isDup?'#f59e0b':'#ef4444'),
+              }}/>
+              <div style={{flex:1,minWidth:0}}>
+                <span style={{fontSize:13,fontWeight:600,color:'#111'}}>{l.name}</span>
+                <span style={{fontSize:11,color:'#9ca3af',marginLeft:8}}>#{l.uid}</span>
+              </div>
+              {isDup && <span style={{fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:4,background:'#fef3c7',color:'#d97706',letterSpacing:'0.3px'}}>DUPLICATE</span>}
+              <span style={{fontSize:11,fontWeight:600,color:l.slotColor,background:l.slotColor+'15',padding:'2px 8px',borderRadius:4}}>{l.slot}</span>
+              <span style={{fontSize:11,fontWeight:600,color:'#9ca3af',background:'#f9fafb',border:'1px solid #f0f0f0',padding:'2px 8px',borderRadius:4}}>{l.device}</span>
+              <span style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:'#c0c0c0',minWidth:60,textAlign:'right'}}>{l.time}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════
+// VARIANT B — Bold Kiosk (Large result, traffic light)
+// ════════════════════════════════════════════════════════
+function VariantB() {
+  const [lastScan, setLastScan] = useState(LOGS[0]);
+  const [queue, setQueue] = useState(LOGS.slice(1,5));
+  const [idx, setIdx] = useState(1);
+
+  function nextScan() {
+    const next = LOGS[idx % LOGS.length];
+    setLastScan(next);
+    setIdx(i=>i+1);
+    setQueue(LOGS.slice(idx%LOGS.length+1,(idx%LOGS.length)+5));
+  }
+
+  const isOk = lastScan.ok;
+  const isDup = lastScan.dup;
+  const bgColor = isOk ? '#f0fdf4' : (isDup?'#fffbeb':'#fff5f5');
+  const accentColor = isOk ? '#16a34a' : (isDup?'#d97706':'#dc2626');
+  const bigIcon = isOk ? '✓' : (isDup?'⟳':'✗');
+  const bigLabel = isOk ? 'ALLOWED' : (isDup?'DUPLICATE':'DENIED');
+
+  return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',background:'#f8fafc',overflow:'hidden',fontFamily:"'Inter',sans-serif"}}>
+
+      {/* Slim top bar */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 20px',background:'#fff',borderBottom:'1px solid #e5e7eb',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{width:7,height:7,borderRadius:'50%',background:'#22c55e'}}/>
+          <span style={{fontWeight:700,fontSize:14,color:'#111'}}>Cafeteria Monitor</span>
+          <span style={{fontSize:12,color:'#9ca3af',background:'#f3f4f6',padding:'2px 8px',borderRadius:4,fontWeight:600}}>Korean</span>
+        </div>
+        <div style={{fontFamily:"'DM Mono',monospace",fontSize:16,fontWeight:500,color:'#374151'}}>12:14 · Lunch</div>
+      </div>
+
+      {/* BIG scan result */}
+      <div style={{
+        flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+        background:bgColor,padding:'32px 24px',transition:'background .3s ease',
+        animation:'bigSlide .25s ease',
+      }}>
+        {/* Giant icon circle */}
+        <div style={{
+          width:120,height:120,borderRadius:'50%',
+          background:accentColor,
+          display:'flex',alignItems:'center',justifyContent:'center',
+          fontSize:60,color:'#fff',fontWeight:900,
+          boxShadow:`0 0 0 12px ${accentColor}22, 0 0 0 24px ${accentColor}10`,
+          marginBottom:24,
+        }}>{bigIcon}</div>
+
+        {/* Status label */}
+        <div style={{fontSize:36,fontWeight:800,color:accentColor,letterSpacing:'-0.5px',marginBottom:8}}>{bigLabel}</div>
+
+        {/* Person */}
+        <div style={{fontSize:24,fontWeight:700,color:'#111',marginBottom:4}}>{lastScan.name}</div>
+        <div style={{fontFamily:"'DM Mono',monospace",fontSize:14,color:'#6b7280',marginBottom:20}}>USR-{lastScan.uid} · {lastScan.device}</div>
+
+        {isDup && (
+          <div style={{background:'#fef3c7',border:'1px solid #fde68a',borderRadius:10,padding:'10px 20px',fontSize:13,fontWeight:600,color:'#92400e',textAlign:'center',maxWidth:300}}>
+            ⚠ Already scanned for {lastScan.slot}. Do not serve.
+          </div>
+        )}
+        {isOk && (
+          <div style={{background:'#dcfce7',border:'1px solid #bbf7d0',borderRadius:10,padding:'10px 20px',fontSize:13,fontWeight:600,color:'#14532d',textAlign:'center'}}>
+            First scan · {lastScan.slot} · Serve meal ✓
+          </div>
+        )}
+      </div>
+
+      {/* Queue — recent scans */}
+      <div style={{flexShrink:0,background:'#fff',borderTop:'1px solid #e5e7eb',padding:'10px 16px'}}>
+        <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.7px',textTransform:'uppercase',color:'#9ca3af',marginBottom:8}}>Recent</div>
+        <div style={{display:'flex',flexDirection:'column',gap:4}}>
+          {LOGS.slice(1,4).map(l=>(
+            <div key={l.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',borderRadius:6,background:'#f9fafb',border:'1px solid #f3f4f6'}}>
+              <div style={{width:6,height:6,borderRadius:'50%',flexShrink:0,background:l.ok?'#22c55e':(l.dup?'#f59e0b':'#ef4444')}}/>
+              <span style={{fontSize:12,fontWeight:600,color:'#374151',flex:1}}>{l.name}</span>
+              <span style={{fontSize:11,color:'#9ca3af'}}>{l.device}</span>
+              <span style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:'#c0c0c0'}}>{l.time}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Demo tap button */}
+      <div style={{padding:'10px 16px',background:'#fff',borderTop:'1px solid #f0f0f0',flexShrink:0}}>
+        <button onClick={nextScan} style={{width:'100%',padding:'12px',borderRadius:8,background:'#111',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',border:'none',letterSpacing:'0.3px'}}>
+          Simulate Next Scan →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════
+// VARIANT C — Dense Table (spreadsheet feel)
+// ════════════════════════════════════════════════════════
+function VariantC() {
+  const [activeSlot, setActiveSlot] = useState('lunch');
+
+  const slotLogs = LOGS.filter(l=>l.slot.toLowerCase()===activeSlot);
+  const allowed = slotLogs.filter(l=>l.ok).length;
+  const dups    = slotLogs.filter(l=>l.dup).length;
+  const total   = slotLogs.length;
+
+  return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',background:'#fff',overflow:'hidden',fontFamily:"'Inter',sans-serif"}}>
+
+      {/* Compact header */}
+      <div style={{display:'flex',alignItems:'center',gap:12,padding:'8px 16px',background:'#fff',borderBottom:'1px solid #e5e7eb',flexShrink:0}}>
+        <div style={{width:6,height:6,borderRadius:'50%',background:'#22c55e',flexShrink:0}}/>
+        <span style={{fontWeight:700,fontSize:13,color:'#111'}}>Cafeteria Monitor</span>
+        <div style={{display:'flex',gap:0,marginLeft:4}}>
+          {SLOTS.map(s=>(
+            <button key={s.name} onClick={()=>setActiveSlot(s.name)} style={{
+              padding:'4px 12px',fontSize:11,fontWeight:600,cursor:'pointer',
+              background:activeSlot===s.name?s.color:'#fff',
+              color:activeSlot===s.name?'#fff':s.color,
+              border:`1px solid ${s.color}`,
+              borderRight:'none',
+              transition:'all .1s',
+            }}
+            className={`slot-tab-c ${s.name}`}>
+              {s.label}
+            </button>
+          ))}
+          <div style={{width:1,background:'#b45309',border:'1px solid #b45309'}}/>
+        </div>
+        <div style={{marginLeft:'auto',display:'flex',gap:16,alignItems:'center'}}>
+          <span style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:'#16a34a',fontWeight:600}}>{allowed} allowed</span>
+          <span style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:'#d97706',fontWeight:600}}>{dups} dup</span>
+          <span style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:'#6b7280'}}>{total} total</span>
+          <span style={{fontFamily:"'DM Mono',monospace",fontSize:12,color:'#9ca3af'}}>12:14</span>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div style={{flex:1,overflowY:'auto'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+          <thead>
+            <tr style={{background:'#f9fafb',position:'sticky',top:0,zIndex:1}}>
+              <th style={TH}>#</th>
+              <th style={{...TH,textAlign:'left'}}>Name</th>
+              <th style={TH}>ID</th>
+              <th style={TH}>Station</th>
+              <th style={TH}>Slot</th>
+              <th style={TH}>Status</th>
+              <th style={TH}>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {LOGS.map((l,i)=>{
+              const rowBg = l.dup ? '#fffbeb' : (i%2===0?'#fff':'#fafafa');
+              return (
+                <tr key={l.id} style={{background:rowBg,borderBottom:'1px solid #f3f4f6'}}>
+                  <td style={{...TD,color:'#c0c0c0',fontSize:10}}>{String(i+1).padStart(3,'0')}</td>
+                  <td style={{...TD,fontWeight:600,color:'#111',textAlign:'left'}}>{l.name}</td>
+                  <td style={{...TD,fontFamily:"'DM Mono',monospace",color:'#6b7280',fontSize:11}}>USR-{l.uid}</td>
+                  <td style={{...TD,color:'#374151'}}>{l.device}</td>
+                  <td style={{...TD}}>
+                    <span style={{fontSize:10,fontWeight:600,color:l.slotColor,background:l.slotColor+'18',padding:'1px 6px',borderRadius:3}}>{l.slot}</span>
+                  </td>
+                  <td style={TD}>
+                    {l.ok
+                      ? <span style={{fontSize:10,fontWeight:700,color:'#16a34a',background:'#f0fdf4',padding:'2px 7px',borderRadius:3}}>✓ OK</span>
+                      : <span style={{fontSize:10,fontWeight:700,color:'#d97706',background:'#fffbeb',padding:'2px 7px',borderRadius:3}}>⟳ DUP</span>
+                    }
+                  </td>
+                  <td style={{...TD,fontFamily:"'DM Mono',monospace",color:'#9ca3af',fontSize:11}}>{l.time}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Footer summary bar */}
+      <div style={{display:'flex',gap:0,flexShrink:0,borderTop:'1px solid #e5e7eb'}}>
+        {DEVICES.map(d=>{
+          const n = LOGS.filter(l=>l.device===d&&l.ok).length;
+          return (
+            <div key={d} style={{flex:1,padding:'8px 0',textAlign:'center',borderRight:'1px solid #f0f0f0',background:'#f9fafb'}}>
+              <div style={{fontSize:10,fontWeight:700,color:'#9ca3af',textTransform:'uppercase',letterSpacing:'0.5px'}}>{d}</div>
+              <div style={{fontFamily:"'DM Mono',monospace",fontSize:16,fontWeight:500,color:'#16a34a',marginTop:2}}>{n}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const TH = { padding:'7px 10px', fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.6px', textAlign:'center', borderBottom:'1px solid #e5e7eb', userSelect:'none' };
+const TD = { padding:'8px 10px', textAlign:'center' };
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

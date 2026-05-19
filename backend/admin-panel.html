@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · Cafeteria Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: 'Inter', sans-serif; background: #0f1115; color: #e6e8eb; font-size: 13px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+input, select, textarea {
+  background: #1a1d23; border: 1px solid #2a2f37; border-radius: 6px;
+  padding: 7px 10px; color: #e6e8eb; outline: none; transition: border-color .12s;
+}
+input:focus, select:focus, textarea:focus { border-color: #4f46e5; }
+button { background: #1a1d23; border: 1px solid #2a2f37; border-radius: 6px;
+  padding: 7px 14px; cursor: pointer; font-weight: 600; transition: background .12s, border-color .12s; }
+button:hover:not(:disabled) { background: #232830; border-color: #3a414b; }
+button:disabled { opacity: .4; cursor: not-allowed; }
+button.primary { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+button.primary:hover:not(:disabled) { background: #6055ec; border-color: #6055ec; }
+button.danger  { background: transparent; border-color: #44232a; color: #f87171; }
+button.danger:hover:not(:disabled) { background: #2a1518; border-color: #6b2a32; }
+.mono { font-family: 'DM Mono', monospace; }
+.label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #6b7280; }
+::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-thumb { background: #2a2f37; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+
+const API_BASE = (typeof window !== 'undefined' && window.API_BASE) || '';
+const MOCK_MODE = (() => {
+  if (typeof window === 'undefined') return false;
+  if (window.location.protocol === 'file:') return true;
+  if (new URLSearchParams(window.location.search).get('mock') === '1') return true;
+  if (/(claude|anthropic|sandbox)/i.test(window.location.hostname)) return true;
+  return false;
+})();
+
+/* ── Mock data store ─────────────────────────────────── */
+const mockStore = {
+  me: null,
+  users: [{ id:'1', username:'admin', displayName:'Administrator', role:'admin', deviceIds:[], createdAt:'2026-05-01T09:00:00Z' }],
+  config: {
+    devices:   [{ id:'123456', name:'Western', enabled:true },{ id:'123457', name:'Korean', enabled:true },{ id:'123458', name:'Chinese', enabled:true },{ id:'123459', name:'Japanese', enabled:true }],
+    timeSlots: [{ name:'breakfast', label:'Breakfast', start:'07:30', end:'09:00' },{ name:'lunch', label:'Lunch', start:'11:30', end:'13:00' },{ name:'dinner', label:'Dinner', start:'17:30', end:'19:00' }],
+    options:   { appPort:3000, recentLogMinutes:5, logRetentionDays:90, startBiostar:true, enforceTimeSlotInApp:false },
+    biostar:   { host:'192.168.1.100', port:443, https:true, username:'admin', password:'' },
+  },
+};
+
+async function api(method, path, body) {
+  if (MOCK_MODE) return mockApi(method, path, body);
+  const opts = { method, credentials:'include', headers:{} };
+  if (body !== undefined) { opts.headers['Content-Type']='application/json'; opts.body=JSON.stringify(body); }
+  const res = await fetch(`${API_BASE}${path}`, opts);
+  const data = await res.json().catch(()=>({}));
+  if (!res.ok) throw Object.assign(new Error(data.error || res.statusText), { status:res.status });
+  return data;
+}
+
+async function mockApi(method, path, body) {
+  await new Promise(r=>setTimeout(r,100));
+  const seg = path.split('/').filter(Boolean); // ['api','admin','devices','123']
+
+  if (method==='POST' && path==='/api/auth/login') {
+    if (body?.username==='admin' && body?.password) { mockStore.me={id:'1',username:'admin',role:'admin',displayName:'Administrator'}; return {user:mockStore.me,config:mockStore.config}; }
+    throw Object.assign(new Error('Invalid credentials'),{status:401});
+  }
+  if (method==='POST' && path==='/api/auth/logout') { mockStore.me=null; return {ok:true}; }
+  if (method==='GET'  && path==='/api/auth/me') {
+    if (!mockStore.me) throw Object.assign(new Error('login_required'),{status:401});
+    return {user:mockStore.me, config:mockStore.config, historyUnlocked:false};
+  }
+  if (!mockStore.me) throw Object.assign(new Error('login_required'),{status:401});
+
+  if (method==='GET'  && path==='/api/admin/config') return mockStore.config;
+  if (method==='PATCH'&& path==='/api/admin/options') { Object.assign(mockStore.config.options, body); return mockStore.config; }
+  if (method==='PATCH'&& path==='/api/admin/biostar')  { Object.assign(mockStore.config.biostar, body); return mockStore.config; }
+
+  if (method==='POST' && path==='/api/admin/devices') {
+    if (mockStore.config.devices.some(d=>d.id===String(body.id))) throw new Error('Device ID exists');
+    const d={id:String(body.id),name:body.name,enabled:body.enabled!==false};
+    mockStore.config.devices.push(d); return mockStore.config;
+  }
+  if (method==='PATCH' && seg[2]==='devices') {
+    const d=mockStore.config.devices.find(x=>x.id===seg[3]);
+    if(!d) throw new Error('Not found');
+    Object.assign(d,body); return mockStore.config;
+  }
+  if (method==='DELETE' && seg[2]==='devices') {
+    mockStore.config.devices=mockStore.config.devices.filter(x=>x.id!==seg[3]); return mockStore.config;
+  }
+
+  if (method==='POST' && path==='/api/admin/time-slots') {
+    const existing=mockStore.config.timeSlots.findIndex(s=>s.name===body.name);
+    if(existing>=0) mockStore.config.timeSlots[existing]={...mockStore.config.timeSlots[existing],...body};
+    else mockStore.config.timeSlots.push({name:body.name,label:body.label,start:body.start,end:body.end});
+    return mockStore.config;
+  }
+  if (method==='PATCH' && seg[2]==='time-slots') {
+    const s=mockStore.config.timeSlots.find(x=>x.name===seg[3]);
+    if(!s) throw new Error('Not found'); Object.assign(s,body); return mockStore.config;
+  }
+  if (method==='DELETE' && seg[2]==='time-slots') {
+    mockStore.config.timeSlots=mockStore.config.timeSlots.filter(x=>x.name!==seg[3]); return mockStore.config;
+  }
+
+  if (method==='GET'  && path==='/api/admin/users') return mockStore.users;
+  if (method==='POST' && path==='/api/admin/users') {
+    if (mockStore.users.some(u=>u.username===body.username)) throw new Error('Username taken');
+    const u={id:String(Date.now()),username:body.username,displayName:body.displayName||body.username,role:body.role||'viewer',deviceIds:body.deviceIds||[],createdAt:new Date().toISOString()};
+    mockStore.users.push(u); return u;
+  }
+  if (method==='PATCH' && seg[2]==='users') {
+    const u=mockStore.users.find(x=>x.id===seg[3]); if(!u) throw new Error('Not found');
+    Object.assign(u,{...body,passwordHash:undefined,passcodeHash:undefined}); return u;
+  }
+  if (method==='DELETE' && seg[2]==='users') {
+    if(mockStore.users.length<=1) throw new Error('Must keep at least one admin');
+    mockStore.users=mockStore.users.filter(x=>x.id!==seg[3]); return {ok:true};
+  }
+  throw new Error(`Unhandled mock: ${method} ${path}`);
+}
+
+/* ── Shared UI atoms ─────────────────────────────────── */
+function Section({ title, subtitle, action, children }) {
+  return (
+    <section style={{marginBottom:32}}>
+      <header style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',marginBottom:14}}>
+        <div>
+          <h2 style={{fontSize:16,fontWeight:800,color:'#fff'}}>{title}</h2>
+          {subtitle && <div style={{fontSize:12,color:'#6b7280',marginTop:3}}>{subtitle}</div>}
+        </div>
+        {action}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+function Card({ children, style }) {
+  return <div style={{background:'#15181d',border:'1px solid #1f2329',borderRadius:8,...style}}>{children}</div>;
+}
+
+function TableHead({ cols }) {
+  return (
+    <div style={{display:'grid',gridTemplateColumns:cols.map(c=>c.w||'1fr').join(' '),padding:'9px 14px',background:'#181b21',borderBottom:'1px solid #1f2329'}}>
+      {cols.map(c=><div key={c.k} className="label" style={{textAlign:c.align||'left'}}>{c.label}</div>)}
+    </div>
+  );
+}
+function TableRow({ cols, children }) {
+  return <div style={{display:'grid',gridTemplateColumns:cols.map(c=>c.w||'1fr').join(' '),padding:'10px 14px',borderTop:'1px solid #1f2329',alignItems:'center'}}>{children}</div>;
+}
+
+function Alert({ ok, text }) {
+  if (!text) return null;
+  return <div style={{padding:'7px 10px',borderRadius:5,fontSize:12,marginBottom:12,background:ok?'#0f2418':'#2a1518',border:`1px solid ${ok?'#1f4b32':'#44232a'}`,color:ok?'#4ade80':'#f87171'}}>{text}</div>;
+}
+
+/* ── Stations tab ────────────────────────────────────── */
+function Stations({ cfg, reload }) {
+  const devices = cfg?.devices || [];
+  const [adding,setAdding]=useState(false); const [nId,setNId]=useState(''); const [nName,setNName]=useState('');
+  const [editId,setEditId]=useState(null); const [editName,setEditName]=useState('');
+  const [err,setErr]=useState('');
+
+  const save = async (id) => {
+    if (!editName.trim()) return;
+    try { await api('PATCH',`/api/admin/devices/${id}`,{name:editName.trim()}); setEditId(null); reload(); }
+    catch(e) { setErr(e.message); }
+  };
+  const remove = async (id) => {
+    if (!confirm('Remove this device?')) return;
+    try { await api('DELETE',`/api/admin/devices/${id}`); reload(); }
+    catch(e) { setErr(e.message); }
+  };
+  const add = async () => {
+    if (!/^\d+$/.test(nId)||!nName.trim()) { setErr('Device ID must be numeric and name is required'); return; }
+    try { await api('POST','/api/admin/devices',{id:nId,name:nName.trim()}); setAdding(false); setNId(''); setNName(''); reload(); }
+    catch(e) { setErr(e.message); }
+  };
+  const toggle = async (d) => {
+    try { await api('PATCH',`/api/admin/devices/${d.id}`,{enabled:!d.enabled}); reload(); }
+    catch(e) { setErr(e.message); }
+  };
+
+  const cols=[{k:'id',label:'Device ID',w:'130px'},{k:'name',label:'Name'},{k:'en',label:'Active',w:'80px',align:'center'},{k:'act',label:'',w:'160px',align:'right'}];
+  return (
+    <Section title="Stations" subtitle="Physical scan terminals. Renaming broadcasts to all iPads live."
+      action={!adding&&<button className="primary" onClick={()=>{setAdding(true);setErr('');}}>+ Add Device</button>}>
+      {err && <Alert ok={false} text={err}/>}
+      <Card>
+        <TableHead cols={cols}/>
+        {adding && (
+          <TableRow cols={cols}>
+            <input className="mono" placeholder="123460" value={nId} onChange={e=>setNId(e.target.value)} style={{width:120}}/>
+            <input placeholder="Station name" value={nName} onChange={e=>setNName(e.target.value)}/>
+            <div/>
+            <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
+              <button onClick={()=>{setAdding(false);setNId('');setNName('');}}>Cancel</button>
+              <button className="primary" onClick={add}>Save</button>
+            </div>
+          </TableRow>
+        )}
+        {devices.map(d=>(
+          <TableRow key={d.id} cols={cols}>
+            <span className="mono" style={{color:'#9ca3af',fontSize:11}}>{d.id}</span>
+            {editId===d.id
+              ? <input value={editName} onChange={e=>setEditName(e.target.value)} autoFocus onKeyDown={e=>e.key==='Enter'&&save(d.id)}/>
+              : <span style={{fontWeight:600,color:'#fff'}}>{d.name}</span>}
+            <div style={{textAlign:'center'}}>
+              <button onClick={()=>toggle(d)} style={{padding:'3px 8px',fontSize:11,background:d.enabled!==false?'#0f2418':'transparent',border:`1px solid ${d.enabled!==false?'#1f4b32':'#2a2f37'}`,color:d.enabled!==false?'#4ade80':'#6b7280',borderRadius:4}}>
+                {d.enabled!==false?'On':'Off'}
+              </button>
+            </div>
+            <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
+              {editId===d.id
+                ? <><button onClick={()=>setEditId(null)}>Cancel</button><button className="primary" onClick={()=>save(d.id)}>Save</button></>
+                : <><button onClick={()=>{setEditId(d.id);setEditName(d.name);setErr('');}}>Rename</button><button className="danger" onClick={()=>remove(d.id)}>Remove</button></>}
+            </div>
+          </TableRow>
+        ))}
+        {devices.length===0 && <div style={{padding:'24px',textAlign:'center',color:'#6b7280',fontSize:12}}>No devices configured.</div>}
+      </Card>
+    </Section>
+  );
+}
+
+/* ── Time Slots tab ──────────────────────────────────── */
+function TimeSlots({ cfg, reload }) {
+  const slots = cfg?.timeSlots || [];
+  const [adding,setAdding]=useState(false);
+  const [newSlot,setNewSlot]=useState({name:'',label:'',start:'',end:''});
+  const [editing,setEditing]=useState(null); // slot name
+  const [editData,setEditData]=useState({});
+  const [err,setErr]=useState('');
+
+  const saveEdit = async (name) => {
+    try { await api('PATCH',`/api/admin/time-slots/${name}`,editData); setEditing(null); reload(); }
+    catch(e) { setErr(e.message); }
+  };
+  const remove = async (name) => {
+    if (!confirm('Delete this time slot?')) return;
+    try { await api('DELETE',`/api/admin/time-slots/${name}`); reload(); }
+    catch(e) { setErr(e.message); }
+  };
+  const add = async () => {
+    const {name,label,start,end}=newSlot;
+    if (!name||!label||!start||!end) { setErr('All fields required'); return; }
+    if (!/^\d{2}:\d{2}$/.test(start)||!/^\d{2}:\d{2}$/.test(end)) { setErr('Times must be HH:MM'); return; }
+    try { await api('POST','/api/admin/time-slots',newSlot); setAdding(false); setNewSlot({name:'',label:'',start:'',end:''}); reload(); }
+    catch(e) { setErr(e.message); }
+  };
+
+  const cols=[{k:'name',label:'Key',w:'120px'},{k:'label',label:'Label'},{k:'start',label:'Start',w:'100px'},{k:'end',label:'End',w:'100px'},{k:'act',label:'',w:'140px',align:'right'}];
+  const F = (field,val,onChange) => <input className="mono" value={val} onChange={e=>onChange(e.target.value)} style={{width:'100%'}}/>;
+
+  return (
+    <Section title="Time Slots" subtitle="Meal windows used to detect duplicates and bucket scan counts."
+      action={!adding&&<button className="primary" onClick={()=>{setAdding(true);setErr('');}}>+ Add Slot</button>}>
+      {err && <Alert ok={false} text={err}/>}
+      <Card>
+        <TableHead cols={cols}/>
+        {adding && (
+          <TableRow cols={cols}>
+            {F('name',newSlot.name,v=>setNewSlot(p=>({...p,name:v})))}
+            {F('label',newSlot.label,v=>setNewSlot(p=>({...p,label:v})))}
+            {F('start',newSlot.start,v=>setNewSlot(p=>({...p,start:v})))}
+            {F('end',newSlot.end,v=>setNewSlot(p=>({...p,end:v})))}
+            <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
+              <button onClick={()=>{setAdding(false);setErr('');}}>Cancel</button>
+              <button className="primary" onClick={add}>Save</button>
+            </div>
+          </TableRow>
+        )}
+        {slots.map(s=>(
+          <TableRow key={s.name} cols={cols}>
+            <span className="mono" style={{color:'#9ca3af'}}>{s.name}</span>
+            {editing===s.name
+              ? <>{F('label',editData.label,v=>setEditData(p=>({...p,label:v})))}
+                  {F('start',editData.start,v=>setEditData(p=>({...p,start:v})))}
+                  {F('end',editData.end,v=>setEditData(p=>({...p,end:v})))}
+                  <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
+                    <button onClick={()=>setEditing(null)}>Cancel</button>
+                    <button className="primary" onClick={()=>saveEdit(s.name)}>Save</button>
+                  </div></>
+              : <><span style={{fontWeight:600,color:'#fff'}}>{s.label}</span>
+                  <span className="mono" style={{color:'#9ca3af'}}>{s.start}</span>
+                  <span className="mono" style={{color:'#9ca3af'}}>{s.end}</span>
+                  <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
+                    <button onClick={()=>{setEditing(s.name);setEditData({label:s.label,start:s.start,end:s.end});setErr('');}}>Edit</button>
+                    <button className="danger" onClick={()=>remove(s.name)}>Delete</button>
+                  </div></>}
+          </TableRow>
+        ))}
+        {slots.length===0 && <div style={{padding:'24px',textAlign:'center',color:'#6b7280',fontSize:12}}>No time slots configured.</div>}
+      </Card>
+    </Section>
+  );
+}
+
+/* ── Users tab ───────────────────────────────────────── */
+function Users({ me, cfg }) {
+  const [list,setList]     = useState([]);
+  const [adding,setAdding] = useState(false);
+  const [form,setForm]     = useState({username:'',displayName:'',password:'',passcode:'',role:'viewer',deviceIds:[]});
+  const [msg,setMsg]       = useState(null);
+  const [editId,setEditId] = useState(null);
+  const [editForm,setEditForm] = useState({});
+
+  const load = useCallback(async()=>{ try{ setList(await api('GET','/api/admin/users')); }catch{} },[]);
+  useEffect(()=>{ load(); },[load]);
+
+  const devices = cfg?.devices || [];
+
+  const create = async () => {
+    if (!form.username||!form.password||!form.passcode) { setMsg({ok:false,text:'Username, password, and passcode are all required'}); return; }
+    if (!/^\d{4,8}$/.test(form.passcode)) { setMsg({ok:false,text:'Passcode must be 4–8 digits'}); return; }
+    try { await api('POST','/api/admin/users',form); setAdding(false); setForm({username:'',displayName:'',password:'',passcode:'',role:'viewer',deviceIds:[]}); setMsg(null); load(); }
+    catch(e) { setMsg({ok:false,text:e.message}); }
+  };
+  const saveEdit = async (id) => {
+    try { await api('PATCH',`/api/admin/users/${id}`,editForm); setEditId(null); setMsg(null); load(); }
+    catch(e) { setMsg({ok:false,text:e.message}); }
+  };
+  const remove = async (id) => {
+    if (!confirm('Remove this user?')) return;
+    try { await api('DELETE',`/api/admin/users/${id}`); load(); }
+    catch(e) { setMsg({ok:false,text:e.message}); }
+  };
+  const toggleDevice = (id,devId) => {
+    setEditForm(p=>{ const ids=[...(p.deviceIds||[])]; const i=ids.indexOf(devId); if(i>=0) ids.splice(i,1); else ids.push(devId); return {...p,deviceIds:ids}; });
+  };
+
+  return (
+    <Section title="Users" subtitle="Admin accounts access this console. Viewer accounts run on iPad kiosks. The passcode is the PIN used to unlock the kiosk."
+      action={!adding&&<button className="primary" onClick={()=>{setAdding(true);setMsg(null);}}>+ Add User</button>}>
+      {msg && <Alert ok={msg.ok} text={msg.text}/>}
+
+      {adding && (
+        <Card style={{padding:'16px 18px',marginBottom:16}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#fff',marginBottom:14}}>New User</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+            {[['Username','username','text'],['Display Name','displayName','text'],['Password','password','password'],['Passcode (PIN, 4–8 digits)','passcode','text']].map(([lbl,k,t])=>(
+              <div key={k}>
+                <div className="label" style={{marginBottom:4}}>{lbl}</div>
+                <input type={t} value={form[k]} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))} inputMode={k==='passcode'?'numeric':undefined} style={{width:'100%'}}/>
+              </div>
+            ))}
+            <div>
+              <div className="label" style={{marginBottom:4}}>Role</div>
+              <select value={form.role} onChange={e=>setForm(p=>({...p,role:e.target.value}))} style={{width:'100%'}}>
+                <option value="viewer">Viewer (kiosk)</option>
+                <option value="admin">Admin (console)</option>
+              </select>
+            </div>
+          </div>
+          {form.role==='viewer' && devices.length>0 && (
+            <div style={{marginBottom:10}}>
+              <div className="label" style={{marginBottom:6}}>Allowed Devices (leave empty = all)</div>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                {devices.map(d=>(
+                  <label key={d.id} style={{display:'flex',alignItems:'center',gap:5,cursor:'pointer',fontSize:12}}>
+                    <input type="checkbox" checked={(form.deviceIds||[]).includes(d.id)} onChange={()=>setForm(p=>{ const ids=[...(p.deviceIds||[])]; const i=ids.indexOf(d.id); if(i>=0) ids.splice(i,1); else ids.push(d.id); return {...p,deviceIds:ids}; })}/>
+                    {d.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          <div style={{display:'flex',gap:8}}>
+            <button onClick={()=>{setAdding(false);setMsg(null);}}>Cancel</button>
+            <button className="primary" onClick={create}>Create User</button>
+          </div>
+        </Card>
+      )}
+
+      <Card>
+        {list.map(u=>(
+          <div key={u.id} style={{padding:'12px 16px',borderBottom:'1px solid #1f2329'}}>
+            {editId===u.id ? (
+              <div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+                  {[['Display Name','displayName','text'],['New Password (leave blank to keep)','password','password'],['New Passcode (PIN)','passcode','text']].map(([lbl,k,t])=>(
+                    <div key={k}>
+                      <div className="label" style={{marginBottom:4}}>{lbl}</div>
+                      <input type={t} value={editForm[k]||''} onChange={e=>setEditForm(p=>({...p,[k]:e.target.value}))} inputMode={k==='passcode'?'numeric':undefined} style={{width:'100%'}}/>
+                    </div>
+                  ))}
+                  <div>
+                    <div className="label" style={{marginBottom:4}}>Role</div>
+                    <select value={editForm.role||u.role} onChange={e=>setEditForm(p=>({...p,role:e.target.value}))} style={{width:'100%'}}>
+                      <option value="viewer">Viewer</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                </div>
+                {(editForm.role||u.role)==='viewer' && devices.length>0 && (
+                  <div style={{marginBottom:10}}>
+                    <div className="label" style={{marginBottom:6}}>Allowed Devices</div>
+                    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                      {devices.map(d=>(
+                        <label key={d.id} style={{display:'flex',alignItems:'center',gap:5,cursor:'pointer',fontSize:12}}>
+                          <input type="checkbox" checked={(editForm.deviceIds||u.deviceIds||[]).includes(d.id)} onChange={()=>toggleDevice(u.id,d.id)}/>
+                          {d.name}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div style={{display:'flex',gap:8}}>
+                  <button onClick={()=>setEditId(null)}>Cancel</button>
+                  <button className="primary" onClick={()=>saveEdit(u.id)}>Save Changes</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                <div>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <span style={{fontWeight:700,color:'#fff'}}>{u.displayName||u.username}</span>
+                    <span className="mono" style={{fontSize:10,color:'#6b7280'}}>{u.username}</span>
+                    <span style={{fontSize:10,fontWeight:700,padding:'1px 7px',borderRadius:3,background:u.role==='admin'?'#1e1a4a':'#1a2b1a',color:u.role==='admin'?'#818cf8':'#4ade80',textTransform:'uppercase',letterSpacing:'0.5px'}}>{u.role}</span>
+                    {u.id===me?.id && <span className="mono" style={{fontSize:10,color:'#4b5563'}}>(you)</span>}
+                  </div>
+                  {u.role==='viewer' && u.deviceIds?.length>0 && (
+                    <div style={{fontSize:11,color:'#6b7280',marginTop:3}}>Devices: {u.deviceIds.map(id=>devices.find(d=>d.id===id)?.name||id).join(', ')}</div>
+                  )}
+                  {u.role==='viewer' && (!u.deviceIds||u.deviceIds.length===0) && (
+                    <div style={{fontSize:11,color:'#6b7280',marginTop:3}}>All devices</div>
+                  )}
+                </div>
+                <div style={{display:'flex',gap:6}}>
+                  <button onClick={()=>{setEditId(u.id);setEditForm({displayName:u.displayName,role:u.role,deviceIds:[...(u.deviceIds||[])]});}}>Edit</button>
+                  {u.id!==me?.id && <button className="danger" onClick={()=>remove(u.id)}>Remove</button>}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+        {list.length===0 && <div style={{padding:'24px',textAlign:'center',color:'#6b7280',fontSize:12}}>No users.</div>}
+      </Card>
+    </Section>
+  );
+}
+
+/* ── System tab ──────────────────────────────────────── */
+function System({ cfg, reload }) {
+  const [opts,setOpts]   = useState(cfg?.options||{});
+  const [bio,setBio]     = useState({...cfg?.biostar||{},password:''});
+  const [msg,setMsg]     = useState(null);
+
+  const saveOpts = async () => {
+    try { await api('PATCH','/api/admin/options',opts); setMsg({ok:true,text:'Options saved. App port changes require restart.'}); reload(); }
+    catch(e) { setMsg({ok:false,text:e.message}); }
+  };
+  const saveBio = async () => {
+    const payload = {...bio}; if(!payload.password) delete payload.password;
+    try { await api('PATCH','/api/admin/biostar',payload); setMsg({ok:true,text:'BioStar2 settings saved. Reconnecting...'}); reload(); }
+    catch(e) { setMsg({ok:false,text:e.message}); }
+  };
+
+  const F = (lbl,val,onChange,extra={}) => (
+    <div>
+      <div className="label" style={{marginBottom:4}}>{lbl}</div>
+      <input value={val??''} onChange={e=>onChange(e.target.value)} style={{width:'100%'}} {...extra}/>
+    </div>
+  );
+
+  return (
+    <Section title="System">
+      {msg && <Alert ok={msg.ok} text={msg.text}/>}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+        <Card style={{padding:'16px 18px'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#fff',marginBottom:14}}>App Options</div>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {F('App Port',opts.appPort,v=>setOpts(p=>({...p,appPort:Number(v)})),{type:'number'})}
+            {F('Recent Log Window (minutes)',opts.recentLogMinutes,v=>setOpts(p=>({...p,recentLogMinutes:Number(v)})),{type:'number'})}
+            {F('Log Retention (days)',opts.logRetentionDays,v=>setOpts(p=>({...p,logRetentionDays:Number(v)})),{type:'number'})}
+            <div style={{display:'flex',gap:12,marginTop:4,alignItems:'center'}}>
+              <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',fontSize:12}}>
+                <input type="checkbox" checked={!!opts.startBiostar} onChange={e=>setOpts(p=>({...p,startBiostar:e.target.checked}))}/>
+                Connect to BioStar2 on start
+              </label>
+            </div>
+            <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',fontSize:12}}>
+              <input type="checkbox" checked={!!opts.enforceTimeSlotInApp} onChange={e=>setOpts(p=>({...p,enforceTimeSlotInApp:e.target.checked}))}/>
+              Enforce time slots in app (deny outside hours)
+            </label>
+          </div>
+          <button className="primary" onClick={saveOpts} style={{marginTop:14}}>Save Options</button>
+        </Card>
+        <Card style={{padding:'16px 18px'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#fff',marginBottom:14}}>BioStar2 Connection</div>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {F('Host',bio.host,v=>setBio(p=>({...p,host:v})))}
+            {F('Port',bio.port,v=>setBio(p=>({...p,port:Number(v)})),{type:'number'})}
+            {F('Username',bio.username,v=>setBio(p=>({...p,username:v})))}
+            {F('Password (leave blank to keep)',bio.password,v=>setBio(p=>({...p,password:v})),{type:'password'})}
+            <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',fontSize:12}}>
+              <input type="checkbox" checked={!!bio.https} onChange={e=>setBio(p=>({...p,https:e.target.checked}))}/>
+              Use HTTPS / WSS
+            </label>
+          </div>
+          <button className="primary" onClick={saveBio} style={{marginTop:14}}>Save &amp; Reconnect</button>
+        </Card>
+      </div>
+    </Section>
+  );
+}
+
+/* ── Logs tab ────────────────────────────────────────── */
+function Logs() {
+  const [date,setDate]=useState(()=>new Date().toISOString().slice(0,10));
+  const download = () => {
+    if (MOCK_MODE) {
+      const blob=new Blob(['id,timestamp,userId,userName,deviceId,deviceName,slotName,allowed,reason\n1,2026-05-11T12:14:03Z,USR-042,Kim Ji-woo,123457,Korean,lunch,true,ok\n'],{type:'text/csv'});
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`cafeteria-${date}.csv`; a.click(); return;
+    }
+    window.location.href=`${API_BASE}/api/admin/logs.csv?date=${date}`;
+  };
+  return (
+    <Section title="Logs" subtitle="Download daily scan log as CSV.">
+      <Card style={{padding:'18px 20px',display:'flex',gap:14,alignItems:'flex-end',maxWidth:400}}>
+        <div>
+          <div className="label" style={{marginBottom:5}}>Date</div>
+          <input type="date" value={date} onChange={e=>setDate(e.target.value)}/>
+        </div>
+        <button className="primary" onClick={download}>Download CSV</button>
+      </Card>
+    </Section>
+  );
+}
+
+/* ── Sidebar ─────────────────────────────────────────── */
+function Sidebar({ tab, onTab, me, onLogout }) {
+  const items=[{id:'stations',label:'Stations'},{id:'slots',label:'Time Slots'},{id:'users',label:'Users'},{id:'system',label:'System'},{id:'logs',label:'Logs'}];
+  return (
+    <aside style={{width:200,flexShrink:0,background:'#15181d',borderRight:'1px solid #1f2329',display:'flex',flexDirection:'column'}}>
+      <div style={{padding:'18px 16px 12px',borderBottom:'1px solid #1f2329'}}>
+        <div style={{display:'flex',alignItems:'center',gap:7}}>
+          <div style={{width:5,height:20,background:'#4f46e5',borderRadius:2}}/>
+          <div style={{fontSize:13,fontWeight:800}}>Admin</div>
+        </div>
+        <div className="mono" style={{fontSize:10,color:'#6b7280',marginTop:5}}>cafeteria-monitor</div>
+      </div>
+      <nav style={{flex:1,padding:8,display:'flex',flexDirection:'column',gap:2}}>
+        {items.map(it=>(
+          <button key={it.id} onClick={()=>onTab(it.id)} style={{textAlign:'left',padding:'8px 12px',borderRadius:5,background:tab===it.id?'#1f2329':'transparent',border:'1px solid transparent',borderLeft:tab===it.id?'2px solid #4f46e5':'2px solid transparent',color:tab===it.id?'#fff':'#9ca3af',fontSize:12,fontWeight:600}}>
+            {it.label}
+          </button>
+        ))}
+      </nav>
+      <div style={{padding:'12px 14px',borderTop:'1px solid #1f2329'}}>
+        <div className="label" style={{marginBottom:4}}>Signed in as</div>
+        <div className="mono" style={{fontSize:12,color:'#e6e8eb',marginBottom:8}}>{me?.username}</div>
+        <button onClick={onLogout} style={{width:'100%',padding:'5px 0',fontSize:11}}>Sign out</button>
+      </div>
+      <div style={{padding:'10px 14px',borderTop:'1px solid #1f2329'}}>
+        <a href="./" style={{fontSize:11,color:'#6b7280',textDecoration:'none'}}>← Dashboard</a>
+      </div>
+    </aside>
+  );
+}
+
+/* ── Login ───────────────────────────────────────────── */
+function Login({ onAuth }) {
+  const [u,setU]=useState(''); const [p,setP]=useState(''); const [err,setErr]=useState(''); const [busy,setBusy]=useState(false);
+  const submit = async e => {
+    e?.preventDefault(); setErr(''); setBusy(true);
+    try {
+      const data = await api('POST','/api/auth/login',{username:u,password:p});
+      onAuth(data.user, data.config);
+    } catch(e) { setErr(e.message==='invalid_login'||e.status===401?'Wrong username or password':e.message||'Login failed'); setBusy(false); }
+  };
+  return (
+    <div style={{height:'100%',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <form onSubmit={submit} style={{width:340,background:'#15181d',border:'1px solid #1f2329',borderRadius:10,padding:'28px 26px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:22}}>
+          <div style={{width:8,height:24,background:'#4f46e5',borderRadius:2}}/>
+          <div>
+            <div style={{fontSize:14,fontWeight:800}}>Admin Console</div>
+            <div className="mono" style={{fontSize:10,color:'#6b7280',marginTop:1}}>cafeteria-monitor</div>
+          </div>
+        </div>
+        <div className="label" style={{display:'block',marginBottom:5}}>Username</div>
+        <input value={u} onChange={e=>setU(e.target.value)} autoFocus required style={{width:'100%',marginBottom:12}}/>
+        <div className="label" style={{display:'block',marginBottom:5}}>Password</div>
+        <input type="password" value={p} onChange={e=>setP(e.target.value)} required style={{width:'100%',marginBottom:16}}/>
+        {err && <Alert ok={false} text={err}/>}
+        <button type="submit" className="primary" disabled={busy} style={{width:'100%'}}>{busy?'Signing in…':'Sign in'}</button>
+        {MOCK_MODE && <div className="mono" style={{marginTop:16,fontSize:10,color:'#4b5563',textAlign:'center'}}>preview · admin / [any password]</div>}
+      </form>
+    </div>
+  );
+}
+
+/* ── App ─────────────────────────────────────────────── */
+function App() {
+  const [phase,setPhase]=useState('checking');
+  const [me,setMe]=useState(null); const [cfg,setCfg]=useState(null);
+  const [tab,setTab]=useState('stations');
+
+  useEffect(()=>{
+    if (MOCK_MODE) { setPhase('login'); return; }
+    (async()=>{
+      try {
+        const d = await api('GET','/api/auth/me');
+        if (d.user.role!=='admin') { alert('Admin access required'); return; }
+        setMe(d.user); setCfg(d.config.admin||d.config); setPhase('console');
+      } catch { setPhase('login'); }
+    })();
+  },[]);
+
+  const onAuth = useCallback((user,config)=>{
+    if(user.role!=='admin') { alert('Admin access required'); return; }
+    setMe(user); setCfg(config.admin||config); setPhase('console');
+  },[]);
+
+  const onLogout = useCallback(async()=>{
+    try{ await api('POST','/api/auth/logout'); }catch{}
+    setMe(null); setCfg(null); setPhase('login');
+  },[]);
+
+  const reload = useCallback(async()=>{
+    if(MOCK_MODE){ setCfg({...mockStore.config}); return; }
+    try{ const d=await api('GET','/api/admin/config'); setCfg(d); }catch{}
+  },[]);
+
+  if(phase==='checking') return <div style={{height:'100%',display:'flex',alignItems:'center',justifyContent:'center'}}><div className="mono" style={{color:'#4b5563',fontSize:12}}>checking session…</div></div>;
+  if(phase==='login')   return <Login onAuth={onAuth}/>;
+
+  return (
+    <div style={{height:'100%',display:'flex'}}>
+      <Sidebar tab={tab} onTab={setTab} me={me} onLogout={onLogout}/>
+      <main style={{flex:1,overflow:'auto',padding:'28px 36px',background:'#0f1115'}}>
+        <div style={{maxWidth:960}}>
+          {tab==='stations' && <Stations cfg={cfg} reload={reload}/>}
+          {tab==='slots'    && <TimeSlots cfg={cfg} reload={reload}/>}
+          {tab==='users'    && <Users me={me} cfg={cfg}/>}
+          {tab==='system'   && <System cfg={cfg} reload={reload}/>}
+          {tab==='logs'     && <Logs/>}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

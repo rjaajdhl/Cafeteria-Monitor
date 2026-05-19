@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  body { background: #f0f2f5; font-family: 'Inter', sans-serif; margin: 0; padding: 14px; }
+  .section-label { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: #9ca3af; margin: 10px 0 6px; }
+  .section-label:first-child { margin-top: 0; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .swatch { border-radius: 6px; overflow: hidden; border: 1px solid #e5e7eb; }
+  .swatch-color { height: 44px; }
+  .swatch-info { padding: 5px 8px; background: #fff; }
+  .swatch-name { font-size: 11px; font-weight: 600; color: #111827; }
+  .swatch-val  { font-family: 'DM Mono', monospace; font-size: 10px; color: #6b7280; margin-top: 1px; }
+</style>
+</head>
+<body>
+<div class="section-label">Backgrounds</div>
+<div class="grid">
+  <div class="swatch"><div class="swatch-color" style="background:#f0f2f5"></div><div class="swatch-info"><div class="swatch-name">--bg</div><div class="swatch-val">#f0f2f5</div></div></div>
+  <div class="swatch"><div class="swatch-color" style="background:#ffffff"></div><div class="swatch-info"><div class="swatch-name">--surface</div><div class="swatch-val">#ffffff</div></div></div>
+  <div class="swatch"><div class="swatch-color" style="background:#f8f9fb"></div><div class="swatch-info"><div class="swatch-name">--surface2</div><div class="swatch-val">#f8f9fb</div></div></div>
+  <div class="swatch"><div class="swatch-color" style="background:#e5e7eb"></div><div class="swatch-info"><div class="swatch-name">--border</div><div class="swatch-val">#e5e7eb</div></div></div>
+</div>
+<div class="section-label">Text</div>
+<div class="grid">
+  <div class="swatch"><div class="swatch-color" style="background:#111827"></div><div class="swatch-info"><div class="swatch-name">--text</div><div class="swatch-val">#111827</div></div></div>
+  <div class="swatch"><div class="swatch-color" style="background:#374151"></div><div class="swatch-info"><div class="swatch-name">--text-mid</div><div class="swatch-val">#374151</div></div></div>
+  <div class="swatch"><div class="swatch-color" style="background:#6b7280"></div><div class="swatch-info"><div class="swatch-name">--text-muted</div><div class="swatch-val">#6b7280</div></div></div>
+  <div class="swatch"><div class="swatch-color" style="background:#9ca3af"></div><div class="swatch-info"><div class="swatch-name">--text-dim</div><div class="swatch-val">#9ca3af</div></div></div>
+</div>
+<div class="section-label">Accent</div>
+<div class="grid">
+  <div class="swatch"><div class="swatch-color" style="background:#2563eb"></div><div class="swatch-info"><div class="swatch-name">--accent</div><div class="swatch-val">#2563eb</div></div></div>
+  <div class="swatch"><div class="swatch-color" style="background:#eff6ff"></div><div class="swatch-info"><div class="swatch-name">--accent-bg</div><div class="swatch-val">#eff6ff</div></div></div>
+  <div class="swatch"><div class="swatch-color" style="background:#bfdbfe"></div><div class="swatch-info"><div class="swatch-name">--accent-border</div><div class="swatch-val">#bfdbfe</div></div></div>
+</div>
+</body>
+</html>

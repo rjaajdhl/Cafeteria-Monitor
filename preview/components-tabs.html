@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0f2f5; font-family: 'Inter', sans-serif; }
+  .lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: #9ca3af; padding: 10px 16px 5px; }
+  /* View tabs */
+  .view-tabs { display: flex; background: #fff; border-bottom: 1px solid #e5e7eb; }
+  .view-tab { padding: 9px 16px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: transparent; border-bottom: 2px solid transparent; color: #6b7280; letter-spacing: 0.3px; }
+  .view-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+  /* Station chips */
+  .station-row { display: flex; gap: 4px; padding: 10px 16px; background: #fff; border-bottom: 1px solid #e5e7eb; flex-wrap: wrap; }
+  .station-chip { padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; border: 1px solid; }
+  .chip-active { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .chip-idle   { background: #fff; border-color: #e5e7eb; color: #6b7280; }
+  /* Slot pills */
+  .slot-row { display: flex; gap: 6px; padding: 10px 16px; background: #f8f9fb; border-bottom: 1px solid #e5e7eb; align-items: center; flex-wrap: wrap; }
+  .slot-pill { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid; display: flex; align-items: center; gap: 4px; }
+</style>
+</head>
+<body>
+<div class="lbl">View Tabs</div>
+<div class="view-tabs">
+  <div class="view-tab active">Live Log</div>
+  <div class="view-tab">Today Summary</div>
+  <div class="view-tab">Weekly Export</div>
+</div>
+<div class="lbl">Station Selector</div>
+<div class="station-row">
+  <div class="station-chip chip-active">All</div>
+  <div class="station-chip chip-idle">Western</div>
+  <div class="station-chip chip-idle">Korean</div>
+  <div class="station-chip chip-idle">Chinese</div>
+  <div class="station-chip chip-idle">Japanese</div>
+</div>
+<div class="lbl">Slot Filter Pills</div>
+<div class="slot-row">
+  <div class="slot-pill" style="background:#2563eb;border-color:#2563eb;color:#fff">All Slots</div>
+  <div class="slot-pill" style="background:#fff;border-color:#e5e7eb;color:#0369a1">Breakfast <span style="font-size:10px;opacity:.7">07:30–09:00</span></div>
+  <div class="slot-pill" style="background:#7c3aed;border-color:#7c3aed;color:#fff">Lunch <span style="font-size:10px;opacity:.8">11:30–13:00</span></div>
+  <div class="slot-pill" style="background:#fff;border-color:#e5e7eb;color:#b45309">Dinner <span style="font-size:10px;opacity:.7">17:30–19:00</span></div>
+</div>
+</body>
+</html>

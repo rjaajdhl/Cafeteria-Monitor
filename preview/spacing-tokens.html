@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0f2f5; font-family: 'Inter', sans-serif; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .label { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: #9ca3af; margin-bottom: 5px; }
+  .row { display: flex; gap: 8px; }
+  .token { display: flex; align-items: center; gap: 8px; }
+  .bar { background: #2563eb; height: 10px; border-radius: 2px; }
+  .tok-label { font-family: 'DM Mono', monospace; font-size: 10px; color: #6b7280; white-space: nowrap; }
+  .radius-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .radius-box { background: #fff; border: 1px solid #e5e7eb; width: 38px; height: 38px; }
+  .radius-label { font-family: 'DM Mono', monospace; font-size: 9px; color: #9ca3af; text-align: center; }
+  .border-wrap { display: flex; flex-direction: column; gap: 3px; }
+  .border-swatch { height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 9px; }
+  .border-sub { font-family: 'DM Mono', monospace; font-size: 9px; color: #9ca3af; }
+</style>
+</head>
+<body>
+<div>
+  <div class="label">Spacing Scale</div>
+  <div style="display:flex;flex-direction:column;gap:4px;">
+    <div class="token"><div class="bar" style="width:4px"></div><div class="tok-label">--space-1 · 4px</div></div>
+    <div class="token"><div class="bar" style="width:6px"></div><div class="tok-label">--space-2 · 6px</div></div>
+    <div class="token"><div class="bar" style="width:8px"></div><div class="tok-label">--space-3 · 8px</div></div>
+    <div class="token"><div class="bar" style="width:10px"></div><div class="tok-label">--space-4 · 10px</div></div>
+    <div class="token"><div class="bar" style="width:12px"></div><div class="tok-label">--space-5 · 12px</div></div>
+    <div class="token"><div class="bar" style="width:14px"></div><div class="tok-label">--space-6 · 14px</div></div>
+    <div class="token"><div class="bar" style="width:16px"></div><div class="tok-label">--space-7 · 16px (--page-x)</div></div>
+  </div>
+</div>
+<div>
+  <div class="label">Border Radius</div>
+  <div class="row">
+    <div class="radius-wrap"><div class="radius-box" style="border-radius:3px"></div><div class="radius-label">3px<br>xs·tags</div></div>
+    <div class="radius-wrap"><div class="radius-box" style="border-radius:5px"></div><div class="radius-label">5px<br>sm·badge</div></div>
+    <div class="radius-wrap"><div class="radius-box" style="border-radius:7px"></div><div class="radius-label">7px<br>md·btn</div></div>
+    <div class="radius-wrap"><div class="radius-box" style="border-radius:8px"></div><div class="radius-label">8px<br>lg·card</div></div>
+    <div class="radius-wrap"><div class="radius-box" style="border-radius:10px"></div><div class="radius-label">10px<br>xl·table</div></div>
+    <div class="radius-wrap"><div class="radius-box" style="border-radius:20px"></div><div class="radius-label">20px<br>pill·slot</div></div>
+    <div class="radius-wrap"><div class="radius-box" style="border-radius:50%;width:38px;height:38px"></div><div class="radius-label">50%<br>full·icon</div></div>
+  </div>
+</div>
+<div>
+  <div class="label">Border Variants</div>
+  <div class="row" style="flex-wrap:wrap;gap:8px;">
+    <div class="border-wrap">
+      <div class="border-swatch" style="border:1px solid #e5e7eb;width:80px;color:#9ca3af">default</div>
+      <div class="border-sub">#e5e7eb</div>
+    </div>
+    <div class="border-wrap">
+      <div class="border-swatch" style="border:1px solid #bbf7d0;background:#f0fdf4;width:80px;color:#16a34a">allow</div>
+      <div class="border-sub">#bbf7d0</div>
+    </div>
+    <div class="border-wrap">
+      <div class="border-swatch" style="border:1px solid #fecaca;background:#fff5f5;width:80px;color:#dc2626">deny</div>
+      <div class="border-sub">#fecaca</div>
+    </div>
+    <div class="border-wrap">
+      <div class="border-swatch" style="border:1px solid #fde68a;background:#fffbeb;width:80px;color:#d97706">duplicate</div>
+      <div class="border-sub">#fde68a</div>
+    </div>
+    <div class="border-wrap">
+      <div class="border-swatch" style="border:1px solid #bfdbfe;background:#eff6ff;width:80px;color:#2563eb">active</div>
+      <div class="border-sub">#bfdbfe</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

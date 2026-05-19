@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0f2f5; font-family: 'Inter', sans-serif; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+  .entry { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid; }
+  .icon { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+  .body { flex: 1; min-width: 0; }
+  .name { font-size: 14px; font-weight: 600; color: #111827; }
+  .uid  { font-size: 11px; font-weight: 400; color: #6b7280; margin-left: 5px; }
+  .meta { display: flex; gap: 6px; margin-top: 2px; align-items: center; }
+  .tag  { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px; letter-spacing: .5px; text-transform: uppercase; }
+  .slot-tag { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; border: 1px solid; }
+  .station { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 5px; background: #fff; border: 1px solid #e5e7eb; color: #374151; flex-shrink: 0; }
+  .time { font-family: 'DM Mono', monospace; font-size: 11px; color: #9ca3af; flex-shrink: 0; min-width: 60px; text-align: right; }
+</style>
+</head>
+<body>
+  <!-- Allow OK -->
+  <div class="entry" style="background:#f0fdf4;border-color:#bbf7d0">
+    <div class="icon" style="background:#dcfce7;color:#16a34a">✓</div>
+    <div class="body">
+      <div class="name">Kim Ji-woo <span class="uid">(USR-042)</span></div>
+      <div class="meta">
+        <span class="tag" style="background:#dcfce7;color:#16a34a">OK</span>
+        <span class="slot-tag" style="color:#7c3aed;border-color:#7c3aed22">Lunch</span>
+      </div>
+    </div>
+    <div class="station">Korean</div>
+    <div class="time">12:14:03</div>
+  </div>
+  <!-- Allow breakfast -->
+  <div class="entry" style="background:#f0fdf4;border-color:#bbf7d0">
+    <div class="icon" style="background:#dcfce7;color:#16a34a">✓</div>
+    <div class="body">
+      <div class="name">Han So-yeon <span class="uid">(USR-044)</span></div>
+      <div class="meta">
+        <span class="tag" style="background:#dcfce7;color:#16a34a">OK</span>
+        <span class="slot-tag" style="color:#0369a1;border-color:#0369a122">Breakfast</span>
+      </div>
+    </div>
+    <div class="station">Western</div>
+    <div class="time">08:03:44</div>
+  </div>
+  <!-- Deny duplicate -->
+  <div class="entry" style="background:#fffbeb;border-color:#fde68a">
+    <div class="icon" style="background:#fef3c7;color:#d97706">⟳</div>
+    <div class="body">
+      <div class="name">Lee Min-jung <span class="uid">(USR-017)</span></div>
+      <div class="meta">
+        <span class="tag" style="background:#fef3c7;color:#d97706">Duplicate</span>
+        <span class="slot-tag" style="color:#7c3aed;border-color:#7c3aed22">Lunch</span>
+      </div>
+    </div>
+    <div class="station">Chinese</div>
+    <div class="time">12:58:11</div>
+  </div>
+</body>
+</html>

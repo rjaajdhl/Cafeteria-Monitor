@@ -1,0 +1,159 @@
+/**
+ * Cafeteria Monitor — Design Tokens (Light Theme)
+ * Source: ui_kits/cafeteria-monitor/index.html
+ * Fonts: Syne (display), Inter (body), DM Mono (mono/data)
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+/* ─────────────────────────────────────────
+   BASE COLOR TOKENS — Light Theme
+───────────────────────────────────────── */
+:root {
+  /* Backgrounds */
+  --bg:         #f0f2f5;   /* page / viewport background */
+  --surface:    #ffffff;   /* card / topbar / panel background */
+  --surface2:   #f8f9fb;   /* secondary surface, table headers */
+
+  /* Borders */
+  --border:     #e5e7eb;   /* default 1px border */
+  --border-mid: #d1d5db;   /* slightly stronger divider */
+
+  /* Allow / OK */
+  --allow:        #16a34a;
+  --allow-bg:     #f0fdf4;
+  --allow-border: #bbf7d0;
+
+  /* Deny / Error */
+  --deny:         #dc2626;
+  --deny-bg:      #fff5f5;
+  --deny-border:  #fecaca;
+
+  /* Duplicate / Warning */
+  --duplicate:        #d97706;
+  --duplicate-bg:     #fffbeb;
+  --duplicate-border: #fde68a;
+
+  /* Time Slot Colors */
+  --slot-breakfast: #0369a1;   /* blue */
+  --slot-lunch:     #7c3aed;   /* violet */
+  --slot-dinner:    #b45309;   /* amber */
+
+  /* Text */
+  --text:        #111827;   /* primary */
+  --text-mid:    #374151;   /* secondary */
+  --text-muted:  #6b7280;   /* muted */
+  --text-dim:    #9ca3af;   /* faintest */
+
+  /* Accent (blue — active tabs, primary buttons) */
+  --accent:        #2563eb;
+  --accent-bg:     #eff6ff;
+  --accent-border: #bfdbfe;
+
+/* ─────────────────────────────────────────
+   FONT FAMILIES
+───────────────────────────────────────── */
+  --font-display: 'Syne', sans-serif;
+  --font-body:    'Inter', sans-serif;
+  --font-mono:    'DM Mono', monospace;
+
+/* ─────────────────────────────────────────
+   TYPE SCALE
+───────────────────────────────────────── */
+  --text-display-size:   17px;
+  --text-display-weight: 800;
+  --text-display-ls:     -0.3px;
+
+  --text-stat-size:      26px;
+  --text-stat-weight:    500;
+
+  --text-clock-size:     20px;
+  --text-clock-weight:   500;
+  --text-clock-ls:       0.5px;
+
+  --text-body-lg-size:   14px;
+  --text-body-lg-weight: 600;
+
+  --text-ui-size:        12px;
+  --text-ui-weight:      600;
+
+  --text-label-size:     10px;
+  --text-label-weight:   700;
+  --text-label-ls:       0.8px;
+
+  --text-mono-sm:        11px;
+  --text-mono-md:        14px;
+
+/* ─────────────────────────────────────────
+   SPACING
+───────────────────────────────────────── */
+  --space-1:  4px;
+  --space-2:  6px;
+  --space-3:  8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 14px;
+  --space-7: 16px;
+  --page-x:  16px;
+
+/* ─────────────────────────────────────────
+   BORDER RADIUS
+───────────────────────────────────────── */
+  --radius-xs:   3px;   /* tags */
+  --radius-sm:   5px;   /* device badge */
+  --radius-md:   7px;   /* buttons */
+  --radius-lg:   8px;   /* log entries, stat cards */
+  --radius-xl:  10px;   /* summary tables */
+  --radius-pill: 20px;  /* slot filter pills */
+  --radius-full: 50%;   /* status icon circles */
+
+/* ─────────────────────────────────────────
+   ANIMATION
+───────────────────────────────────────── */
+  --ease-default:   ease;
+  --duration-fast:  0.15s;
+  --duration-slide: 0.2s;
+  --duration-flash: 0.4s;
+  --duration-pulse: 2s;
+}
+
+/* ─────────────────────────────────────────
+   SEMANTIC VARS
+───────────────────────────────────────── */
+:root {
+  --h1-font:   var(--font-display);
+  --h1-size:   var(--text-display-size);
+  --h1-weight: var(--text-display-weight);
+  --h1-ls:     var(--text-display-ls);
+  --h1-color:  var(--text);
+
+  --p-font:    var(--font-body);
+  --p-size:    var(--text-body-lg-size);
+  --p-color:   var(--text);
+
+  --code-font:  var(--font-mono);
+  --code-size:  var(--text-mono-sm);
+  --code-color: var(--text-muted);
+
+  --stat-font:   var(--font-mono);
+  --stat-size:   var(--text-stat-size);
+  --stat-weight: var(--text-stat-weight);
+
+  --label-font:   var(--font-body);
+  --label-size:   var(--text-label-size);
+  --label-weight: var(--text-label-weight);
+  --label-ls:     var(--text-label-ls);
+  --label-color:  var(--text-muted);
+
+  --status-allow-color:  var(--allow);
+  --status-allow-bg:     var(--allow-bg);
+  --status-deny-color:   var(--deny);
+  --status-deny-bg:      var(--deny-bg);
+  --status-dup-color:    var(--duplicate);
+  --status-dup-bg:       var(--duplicate-bg);
+}
+
+/* ─────────────────────────────────────────
+   GLOBAL RESET
+───────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

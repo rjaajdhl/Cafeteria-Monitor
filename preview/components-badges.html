@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0f2f5; font-family: 'Inter', sans-serif; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .lbl { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #9ca3af; margin-bottom: 5px; }
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .icon { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; }
+  .item-label { font-size: 11px; color: #6b7280; margin-right: 8px; }
+  .tag { padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; }
+  .badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 5px; background: #fff; border: 1px solid #e5e7eb; color: #374151; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .slot-pill { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; border: 1px solid; }
+</style>
+</head>
+<body>
+  <div>
+    <div class="lbl">Status Icons</div>
+    <div class="row">
+      <div class="icon" style="background:#dcfce7;color:#16a34a">✓</div><span class="item-label">Allow</span>
+      <div class="icon" style="background:#fef3c7;color:#d97706">⟳</div><span class="item-label">Duplicate</span>
+      <div class="icon" style="background:#fee2e2;color:#dc2626">✗</div><span class="item-label">Deny</span>
+    </div>
+  </div>
+  <div>
+    <div class="lbl">Reason Tags</div>
+    <div class="row">
+      <span class="tag" style="background:#dcfce7;color:#16a34a">OK</span>
+      <span class="tag" style="background:#fef3c7;color:#d97706">Duplicate</span>
+    </div>
+  </div>
+  <div>
+    <div class="lbl">Slot Pills</div>
+    <div class="row">
+      <span class="slot-pill" style="background:#eff6ff;border-color:#bfdbfe;color:#0369a1">Breakfast</span>
+      <span class="slot-pill" style="background:#f5f3ff;border-color:#ddd6fe;color:#7c3aed">Lunch</span>
+      <span class="slot-pill" style="background:#fffbeb;border-color:#fde68a;color:#b45309">Dinner</span>
+    </div>
+  </div>
+  <div>
+    <div class="lbl">Live Dot</div>
+    <div class="row">
+      <div class="dot" style="background:#16a34a"></div><span class="item-label">Live</span>
+      <div class="dot" style="background:#dc2626"></div><span class="item-label">Offline</span>
+    </div>
+  </div>
+  <div>
+    <div class="lbl">Station Badge</div>
+    <div class="row">
+      <span class="badge">Western</span>
+      <span class="badge">Korean</span>
+      <span class="badge">Chinese</span>
+      <span class="badge">Japanese</span>
+    </div>
+  </div>
+</body>
+</html>

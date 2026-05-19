@@ -1,0 +1,5 @@
+{
+  "admins": [],
+  "unlockPinHash": null,
+  "_note": "This file is auto-generated on first boot if missing. Default admin: admin/admin, PIN: 123456. Change both immediately via /admin-panel."
+}

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  body { background: #f0f2f5; font-family: 'Inter', sans-serif; margin: 0; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .section-label { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: #9ca3af; margin-bottom: 6px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .swatch { border-radius: 6px; overflow: hidden; border: 1px solid #e5e7eb; }
+  .swatch-color { height: 44px; }
+  .swatch-info { padding: 5px 8px; background: #fff; }
+  .swatch-name { font-size: 11px; font-weight: 600; color: #111827; }
+  .swatch-val  { font-family: 'DM Mono', monospace; font-size: 10px; color: #6b7280; margin-top: 1px; }
+</style>
+</head>
+<body>
+<div>
+  <div class="section-label">Allow / OK</div>
+  <div class="grid3">
+    <div class="swatch"><div class="swatch-color" style="background:#16a34a"></div><div class="swatch-info"><div class="swatch-name">--allow</div><div class="swatch-val">#16a34a</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#f0fdf4"></div><div class="swatch-info"><div class="swatch-name">--allow-bg</div><div class="swatch-val">#f0fdf4</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#bbf7d0"></div><div class="swatch-info"><div class="swatch-name">--allow-border</div><div class="swatch-val">#bbf7d0</div></div></div>
+  </div>
+</div>
+<div>
+  <div class="section-label">Deny / Error</div>
+  <div class="grid3">
+    <div class="swatch"><div class="swatch-color" style="background:#dc2626"></div><div class="swatch-info"><div class="swatch-name">--deny</div><div class="swatch-val">#dc2626</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#fff5f5"></div><div class="swatch-info"><div class="swatch-name">--deny-bg</div><div class="swatch-val">#fff5f5</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#fecaca"></div><div class="swatch-info"><div class="swatch-name">--deny-border</div><div class="swatch-val">#fecaca</div></div></div>
+  </div>
+</div>
+<div>
+  <div class="section-label">Duplicate / Fraud Warning</div>
+  <div class="grid3">
+    <div class="swatch"><div class="swatch-color" style="background:#d97706"></div><div class="swatch-info"><div class="swatch-name">--duplicate</div><div class="swatch-val">#d97706</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#fffbeb"></div><div class="swatch-info"><div class="swatch-name">--duplicate-bg</div><div class="swatch-val">#fffbeb</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#fde68a"></div><div class="swatch-info"><div class="swatch-name">--duplicate-border</div><div class="swatch-val">#fde68a</div></div></div>
+  </div>
+</div>
+<div>
+  <div class="section-label">Slot Colors</div>
+  <div class="grid3">
+    <div class="swatch"><div class="swatch-color" style="background:#0369a1"></div><div class="swatch-info"><div class="swatch-name">Breakfast</div><div class="swatch-val">#0369a1</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#7c3aed"></div><div class="swatch-info"><div class="swatch-name">Lunch</div><div class="swatch-val">#7c3aed</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#b45309"></div><div class="swatch-info"><div class="swatch-name">Dinner</div><div class="swatch-val">#b45309</div></div></div>
+  </div>
+</div>
+</body>
+</html>
