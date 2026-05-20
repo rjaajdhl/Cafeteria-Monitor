@@ -1,160 +1,195 @@
+'use strict';
 /**
  * biostar.js
- * Handles Biostar2 REST API authentication and WebSocket event streaming.
- * Auth flow: POST /api/login, save bs-session-id, connect WebSocket with same session.
+ * Connects to BioStar 2, authenticates, then opens a WebSocket
+ * and calls /api/events/start so real-time events are pushed.
+ *
+ * Flow (from Suprema's own example):
+ *   1. POST /api/login                  → get bs-session-id
+ *   2. WS connect wss://host/wsapi
+ *   3. ws.send('bs-session-id=<id>')    → authenticate the socket
+ *   4. POST /api/events/start           → tell BioStar to push events
+ *   5. ws.onmessage                     → receive real-time log entries
  */
 
-const fetch = require('node-fetch');
+const https  = require('https');
 const WebSocket = require('ws');
-const https = require('https');
-const { EventEmitter } = require('events');
 
-// Ignore self-signed certs on internal Biostar2 server
-const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+const RECONNECT_DELAY_MS = 5_000;
+const EVENT_START_DELAY_MS = 1_000; // match Suprema example's setTimeout
 
-class BiostarClient extends EventEmitter {
-  constructor(config) {
-    super();
-    this.config = config;
-    this.sessionId = null;
-    this.ws = null;
-    this.reconnectTimer = null;
-    this.reconnectDelay = 5000; // ms between reconnect attempts
+/**
+ * @param {object}   config          - biostar section of config.json
+ * @param {string}   config.host     - e.g. "192.168.0.20"
+ * @param {number}   config.port     - e.g. 443
+ * @param {string}   config.username
+ * @param {string}   config.password
+ * @param {Function} onEvent         - called with each parsed event object
+ * @param {Function} onConnectionChange - called with (connected: boolean)
+ */
+function initBiostar(config, onEvent, onConnectionChange) {
+  const { host, port = 443, username, password } = config;
+  const API_BASE = `https://${host}:${port}`;
+  const WS_URI   = `wss://${host}:${port}/wsapi`;
+
+  // Ignore self-signed certs (common on local BioStar installs)
+  const agent = new https.Agent({ rejectUnauthorized: false });
+
+  let stopped      = false;
+  let sessionId    = null;
+  let ws           = null;
+  let rcTimer      = null;
+
+  function scheduleReconnect() {
+    if (stopped) return;
+    clearTimeout(rcTimer);
+    rcTimer = setTimeout(connect, RECONNECT_DELAY_MS);
   }
 
-  /**
-   * Returns the base HTTP(S) URL for REST calls.
-   */
-  get baseUrl() {
-    const proto = this.config.https ? 'https' : 'http';
-    return `${proto}://${this.config.host}:${this.config.port}`;
-  }
-
-  /**
-   * Returns the WebSocket URL.
-   * Biostar2 uses the same port for HTTP and WS (ws:// or wss://).
-   */
-  get wsUrl() {
-    const proto = this.config.https ? 'wss' : 'ws';
-    return `${proto}://${this.config.host}:${this.config.port}/wsapi`;
-  }
-
-  /**
-   * Authenticate against Biostar2 REST API.
-   * Saves session ID from response header for subsequent requests.
-   */
-  async login() {
-    console.log(`[BioStar] Logging in to ${this.baseUrl}`);
-
-    const res = await fetch(`${this.baseUrl}/api/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        User: {
-          login_id: this.config.username,
-          password: this.config.password
+  async function login() {
+    return new Promise((resolve, reject) => {
+      const body = JSON.stringify({
+        User: { login_id: username, password },
+      });
+      const req = https.request(
+        {
+          hostname: host,
+          port,
+          path: '/api/login',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(body),
+          },
+          agent,
+        },
+        (res) => {
+          const sid = res.headers['bs-session-id'];
+          res.resume(); // drain body
+          if (!sid) return reject(new Error('Login failed — no bs-session-id in response'));
+          resolve(sid);
         }
-      }),
-      agent: httpsAgent
+      );
+      req.on('error', reject);
+      req.write(body);
+      req.end();
     });
-
-    if (!res.ok) {
-      throw new Error(`[BioStar] Login failed: HTTP ${res.status}`);
-    }
-
-    // Session ID is returned in response header, not body
-    this.sessionId = res.headers.get('bs-session-id');
-    if (!this.sessionId) {
-      throw new Error('[BioStar] Login succeeded but no bs-session-id in response header');
-    }
-
-    console.log(`[BioStar] Login successful. Session ID obtained.`);
-    return this.sessionId;
   }
 
-  /**
-   * Open WebSocket connection to Biostar2 event stream.
-   * Biostar2 sends all device events as JSON messages over WS.
-   * We pass the session ID as a query param since WS doesn't support custom headers in browser,
-   * but in Node we can also send it via the 'headers' option.
-   */
-  connectWebSocket() {
-    if (!this.sessionId) {
-      throw new Error('[BioStar] Cannot open WebSocket: not logged in');
+  function postEventStart(sid) {
+    return new Promise((resolve, reject) => {
+      const req = https.request(
+        {
+          hostname: host,
+          port,
+          path: '/api/events/start',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'bs-session-id': sid,
+          },
+          agent,
+        },
+        (res) => {
+          let data = '';
+          res.on('data', (c) => (data += c));
+          res.on('end', () => {
+            console.log('[BioStar] /api/events/start →', res.statusCode, data.slice(0, 120));
+            resolve();
+          });
+        }
+      );
+      req.on('error', reject);
+      req.end();
+    });
+  }
+
+  async function connect() {
+    if (stopped) return;
+
+    // Step 1 — login
+    try {
+      sessionId = await login();
+      console.log('[BioStar] Logged in, session:', sessionId);
+    } catch (err) {
+      console.error('[BioStar] Login error:', err.message);
+      scheduleReconnect();
+      return;
     }
 
-    console.log(`[BioStar] Connecting WebSocket to ${this.wsUrl}`);
+    // Step 2 — open WebSocket
+    ws = new WebSocket(WS_URI, { rejectUnauthorized: false });
 
-    this.ws = new WebSocket(this.wsUrl, {
-      headers: { 'bs-session-id': this.sessionId },
-      agent: httpsAgent,
-      rejectUnauthorized: false
+    ws.on('open', () => {
+      console.log('[BioStar] WebSocket open — authenticating socket...');
+
+      // Step 3 — send session ID as first message (REQUIRED)
+      ws.send('bs-session-id=' + sessionId);
+
+      // Step 4 — after 1 s, POST /api/events/start (REQUIRED to trigger push)
+      setTimeout(() => {
+        postEventStart(sessionId)
+          .then(() => {
+            console.log('[BioStar] Event stream started');
+            onConnectionChange(true);
+          })
+          .catch((err) => {
+            console.error('[BioStar] events/start error:', err.message);
+            ws.close();
+          });
+      }, EVENT_START_DELAY_MS);
     });
 
-    this.ws.on('open', () => {
-      console.log('[BioStar] WebSocket connected');
-      this.emit('connected');
-      if (this.reconnectTimer) {
-        clearTimeout(this.reconnectTimer);
-        this.reconnectTimer = null;
-      }
-    });
-
-    this.ws.on('message', (data) => {
+    // Step 5 — receive real-time events
+    ws.on('message', (raw) => {
+      const str = String(raw);
+      console.log('[BioStar] Raw message:', str.slice(0, 300));
       try {
-        const event = JSON.parse(data.toString());
-        this.emit('event', event);
+        const data = JSON.parse(str);
+        // BioStar wraps events in different shapes — normalise here
+        const events = data.EventLog
+          ? [data.EventLog]
+          : Array.isArray(data.EventLogs?.EventLog)
+          ? data.EventLogs.EventLog
+          : Array.isArray(data.Logs?.EventLog)
+          ? data.Logs.EventLog
+          : null;
+
+        if (!events) {
+          console.log('[BioStar] Unrecognised message shape — keys:', Object.keys(data).join(', '));
+          return;
+        }
+
+        console.log('[BioStar] Events received:', events.length);
+        for (const ev of events) {
+          onEvent(ev);
+        }
       } catch (err) {
-        console.error('[BioStar] Failed to parse WS message:', err.message);
+        console.error('[BioStar] Message parse error:', err.message, str.slice(0, 200));
       }
     });
 
-    this.ws.on('close', (code, reason) => {
-      console.warn(`[BioStar] WebSocket closed (${code}): ${reason}. Reconnecting in ${this.reconnectDelay}ms...`);
-      this.emit('disconnected');
-      this._scheduleReconnect();
+    ws.on('close', (code, reason) => {
+      console.warn(`[BioStar] WebSocket closed (${code} ${reason}) — reconnecting in ${RECONNECT_DELAY_MS / 1000}s`);
+      onConnectionChange(false);
+      scheduleReconnect();
     });
 
-    this.ws.on('error', (err) => {
+    ws.on('error', (err) => {
       console.error('[BioStar] WebSocket error:', err.message);
-      this.emit('error', err);
+      // 'close' fires right after, which schedules the reconnect
     });
   }
 
-  /**
-   * Schedule a reconnect attempt.
-   * Re-login first since session may have expired.
-   */
-  _scheduleReconnect() {
-    if (this.reconnectTimer) return;
-    this.reconnectTimer = setTimeout(async () => {
-      try {
-        await this.login();
-        this.connectWebSocket();
-      } catch (err) {
-        console.error('[BioStar] Reconnect failed:', err.message);
-        this._scheduleReconnect();
-      }
-    }, this.reconnectDelay);
-  }
+  connect();
 
-  /**
-   * Full startup: login then open WebSocket.
-   */
-  async start() {
-    await this.login();
-    this.connectWebSocket();
-  }
-
-  /**
-   * Graceful shutdown.
-   */
-  stop() {
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-    if (this.ws) this.ws.close();
-    this.sessionId = null;
-    console.log('[BioStar] Client stopped');
-  }
+  return {
+    stop() {
+      stopped = true;
+      clearTimeout(rcTimer);
+      ws?.close();
+    },
+  };
 }
 
-module.exports = BiostarClient;
+module.exports = { initBiostar };
